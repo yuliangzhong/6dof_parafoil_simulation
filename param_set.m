@@ -1,8 +1,8 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
-laminar_wind_vel_at6m = 10; % absolute value
+laminar_wind_vel_at6m = 2; % absolute value
 laminar_wind_ori_at6m = 0; % 0-north, clockwise, degree
-turbulence_vel_at6m = 3; % absolute value
+turbulence_vel_at6m = 0; % absolute value
 turbulence_ori_at6m = 0; % 0-north, clockwise, degree
 
 %% Parafoil System
@@ -20,11 +20,11 @@ parafoil_thickness = 0.03; % m, thickness of canopy
 S_pd = 0.06; % payload reference area
 
 C_BP = eye(3); % from body frame B to parafoil aero frame P;
-B_r_BP = [0; 0; -1.2];
+B_r_BP = [0.2; 0; -1.2];
 C_BA = eye(3); % from body frame B to apparent mass frame A;
 B_r_BA = [0; 0; -1.2];
 C_BW = eye(3); % from body frame B to payload frame W;
-B_r_BW = [0; 0; 0.2];
+B_r_BW = [0; 0; 0.15];
 
 [Im, Ii] = ImIiCompute(parafoil_arc_h, parafoil_ref_span, ...
                     parafoil_ref_length, parafoil_thickness);
@@ -55,11 +55,12 @@ cD = [c_D0; c_DA2; c_DBs; c_DBa]; % drag force coefficients
 cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
 
 %% Initiation
-init_pos_in_inertial_frame = [0, 0, -100]; % x-desired pose, z-down
-init_rpy = [0,0,0]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-init_uvw = [1,1,1]; % velocity in body frame
-init_pqr = [0, 0, 0]; % angular velocity in body frame
+init_pos_in_inertial_frame = [0, 0, -250]; % x-desired pose, z-down
+init_rpy = [0,  0,  0]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_uvw = [2, 0,  0]; % velocity in body frame
+init_pqr = [0,  0,  0]; % angular velocity in body frame
 
+%% useful function
 function [Im, Ii] = ImIiCompute(a, b, c, t)
 
     a_bar = a/b;
