@@ -21,8 +21,7 @@ S_pd = 0.06; % payload reference area
 
 C_BP = eye(3); % from body frame B to parafoil aero frame P;
 B_r_BP = [0.2; 0; -1.2];
-C_BA = eye(3); % from body frame B to apparent mass frame A;
-B_r_BA = [0; 0; -1.2];
+
 C_BW = eye(3); % from body frame B to payload frame W;
 B_r_BW = [0; 0; 0.15];
 
@@ -39,6 +38,8 @@ c_D0 = 0.12;
 c_DA2 = 0.33;
 c_DBs = 0.43;
 c_DBa = 0.0957;
+
+c_Yb = 1.0;
 
 c_lp = -0.84;
 c_lBa = 0.005;
