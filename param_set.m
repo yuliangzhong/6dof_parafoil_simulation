@@ -44,8 +44,10 @@ c_Yb = 0.23;
 
 c_lp = -0.84; % negative
 c_lBa = 0.005;
-c_m0 = -0.05; % highly influence alpha! compensate apparent mass moment in Y
-c_mA = -0.70; % highly influence alpha! compensate apparent mass moment in Y
+% c_m0 = -0.05; % highly influence alpha! compensate apparent mass moment in Y
+% c_mA = -0.70; % highly influence alpha! compensate apparent mass moment in Y
+c_m0 = 0; c_mA = 0;
+
 c_mq = -1.49; % negative
 c_nr = -0.27; % negative
 c_nBa = 0.0115;
@@ -57,9 +59,14 @@ cD = [c_D0; c_DA2; c_DBs; c_DBa]; % drag force coefficients
 cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
 
 %% Initiation
-init_pos_in_inertial_frame = [0, 0, -250]; % x-desired pose, z-down
-init_rpy = [0,      0.002,  0]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-init_uvw = [5.61,   0,      1.25]; % velocity in body frame
+% init_pos_in_inertial_frame = [-400, -400, -250]; % x-desired heading, z-down
+% init_rpy = [0,      0.002,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+% init_uvw = [5.62,   0,      1.25]; % velocity in body frame
+% init_pqr = [0,  0,  0]; % angular velocity in body frame
+
+init_pos_in_inertial_frame = [-400, -400, -250]; % x-desired heading, z-down
+init_rpy = [0,      0.27,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_uvw = [4.05,   0,      1.91]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% useful function
