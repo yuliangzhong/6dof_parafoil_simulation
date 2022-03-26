@@ -1,7 +1,7 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
-laminar_wind_vel_at6m = 0; % absolute value
-laminar_wind_ori_at6m = 0; % 0-north, clockwise, degree
+laminar_wind_vel_at6m = 1; % absolute value
+laminar_wind_ori_at6m = 45; % 0-north, clockwise, degree
 turbulence_vel_at6m = 0; % absolute value
 turbulence_ori_at6m = 0; % 0-north, clockwise, degree
 
@@ -68,6 +68,22 @@ init_pos_in_inertial_frame = [-400, -400, -250]; % x-desired heading, z-down
 init_rpy = [0,      0.27,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.05,   0,      1.91]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
+
+%% Observer accuracy(accu)
+sampling_T = 0.5; % [seconds]
+row_pitch_accu = 0.2; % [degree]
+yaw_accu = 1; % [degree]
+pos_accu = 1; % [m]
+vel_accu = 0.05; % [m/s]
+acc_accu = 0.5; % [m/s^2]
+angVel_accu = 0.02; %[deg/s]
+airspeed_var = [0.001, 0.001, 0.001]; % [alpha, beta, Vb], no unit
+
+%% Wind Estimator
+mu0 = -[laminar_wind_vel_at6m*cos(laminar_wind_ori_at6m/180*pi); 
+       laminar_wind_vel_at6m*sin(laminar_wind_ori_at6m/180*pi);
+       0];
+wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R)
 
 %% useful function
 function [Im, Ii] = ImIiCompute(a, b, c, t)
