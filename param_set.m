@@ -1,8 +1,8 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
-laminar_wind_vel_at6m = 1; % absolute value
+laminar_wind_vel_at6m = 0; % absolute value
 laminar_wind_ori_at6m = 0; % 0-north, clockwise, degree
-turbulence_vel_at6m = 0.5; % absolute value
+turbulence_vel_at6m = 0; % absolute value
 turbulence_ori_at6m = 0; % 0-north, clockwise, degree
 
 %% Parafoil System
@@ -42,30 +42,30 @@ c_Yb = 0.23;
 
 c_lp = -0.84; % negative
 c_lBa = -0.005; % negative
-% c_m0 = -0.05; % highly influence alpha! compensate apparent mass moment in Y
-% c_mA = -0.70; % highly influence alpha! compensate apparent mass moment in Y
-c_m0 = 0; c_mA = 0;
+c_m0 = -0.05; % highly influence alpha! compensate apparent mass moment in Y
+c_mA = -0.70; % highly influence alpha! compensate apparent mass moment in Y
+% c_m0 = 0; c_mA = 0;
 
 c_mq = -1.49; % negative
 c_nr = -0.27; % negative
 c_nBa = 0.0115; % positive
 
-c_Dpd = 0.5; % payload drag coefficient
+c_Dpd = 3.2; % payload drag coefficient
 
 cL = [c_L0; c_LA; c_LBs]; % lift force coefficients
 cD = [c_D0; c_DA2; c_DBs]; % drag force coefficients
 cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
 
 %% Initiation
-% init_pos_in_inertial_frame = [-400, -400, -250]; % x-North, z-down, y-East
-% init_rpy = [0,      0,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-% init_uvw = [5.61,   0,  1.25]; % velocity in body frame
-% init_pqr = [0,  0,  0]; % angular velocity in body frame
-
 init_pos_in_inertial_frame = [-400, -400, -250]; % x-North, z-down, y-East
-init_rpy = [0,      0.27,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-init_uvw = [4.05,   0,      1.90]; % velocity in body frame
+init_rpy = [0,      0,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_uvw = [5.61,   0,  1.25]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
+
+% init_pos_in_inertial_frame = [-400, -400, -250]; % x-North, z-down, y-East
+% init_rpy = [0,      0.27,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+% init_uvw = [4.05,   0,      1.90]; % velocity in body frame
+% init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
 sampling_T = 0.5; % [seconds]
@@ -89,9 +89,9 @@ wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
 aeroF_co_mu0 = [0 0 0; 
                 0 0 0; 
                 0 0 0;
-                0 0 0]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
-aeroF_co_sigma0 = 0.05*[eye(4), eye(4), eye(4)];
-aeroF_est_noise_var = 0.05*eye(3);
+                3 3 3]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
+aeroF_co_sigma0 = 0.01*[diag([1,1,1,1]), diag([1,1,1,1]), diag([1,1,1,1])];
+aeroF_est_noise_var = 0.0005*eye(3);
 
 
 
