@@ -1,9 +1,16 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
-laminar_wind_vel_at6m = 0; % absolute value
-laminar_wind_ori_at6m = 0; % 0-north, clockwise, degree
-turbulence_vel_at6m = 0; % absolute value
-turbulence_ori_at6m = 0; % 0-north, clockwise, degree
+% laminar_wind_vel_at6m = 3; % absolute value
+% laminar_wind_ori_at6m = 45; % 0-north, clockwise, degree
+% turbulence_vel_at6m = 1; % absolute value
+% turbulence_ori_at6m = -60; % 0-north, clockwise, degree
+
+%% Wind Profile and Dynamics
+xi_w = 0.2* [randn();
+             randn();
+             0];
+a_w = -0.00385;
+b_w = 0.0251;
 
 %% Parafoil System
 system_mass = 2.2; % kg
@@ -79,10 +86,10 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
                                       % about [2.3deg, 2.3deg, 0.05m/s]
 
 %% Wind Estimator
-mu0 = -[laminar_wind_vel_at6m*cos(laminar_wind_ori_at6m/180*pi); 
-       laminar_wind_vel_at6m*sin(laminar_wind_ori_at6m/180*pi);
-       0]; % wind mean initial guess
+mu0 = WindForcast(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
+w_bar_hat0 = mu0;
+wind_est_dyn_var = sampling_T * b_w * eye(3);
 wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
 
 %% Aerodynamic Coefficients Estimator
