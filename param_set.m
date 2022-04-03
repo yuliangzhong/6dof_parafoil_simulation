@@ -1,18 +1,15 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
-% laminar_wind_vel_at6m = 3; % absolute value
-% laminar_wind_ori_at6m = 45; % 0-north, clockwise, degree
-% turbulence_vel_at6m = 1; % absolute value
-% turbulence_ori_at6m = -60; % 0-north, clockwise, degree
 
-%% Wind Profile and Dynamics
-xi_w = 0.2* [randn();
+%% Wind Profile and Wind Gust Dynamics
+xi_w = 0.4* [randn();
              randn();
-             0];
+             0]; % xi_w(h) = xi_w * h / 100
 a_w = -0.00385;
-b_w = 0.0251;
+b_w = 0.0251; % params from paper 14/16
 
 %% Parafoil System
+% params from paper 12
 system_mass = 2.2; % kg
 system_inertia =  [1.68, 0,    0.09;
                    0,    0.80, 0;
@@ -37,22 +34,21 @@ B_r_BW = [0; 0; 0.1];
 
 
 %% Aero Coefficients
+%--- from paper 12 and book ch5
 c_L0 = 0.24; % lift force coefficient
 c_LA = 2.14;
-c_LBs = 0.4670;
+c_LBs = 0.1670;
 
 c_D0 = 0.12;
 c_DA2 = 0.33;
-c_DBs = 0.43;
+c_DBs = 0.043;
 
 c_Yb = 0.23;
 
 c_lp = -0.84; % negative
 c_lBa = -0.005; % negative
-c_m0 = -0.05; % highly influence alpha! compensate apparent mass moment in Y
-c_mA = -0.70; % highly influence alpha! compensate apparent mass moment in Y
-% c_m0 = 0; c_mA = 0;
-
+c_m0 = 0.1; 
+c_mA = -0.72;
 c_mq = -1.49; % negative
 c_nr = -0.27; % negative
 c_nBa = 0.0115; % positive
@@ -64,15 +60,10 @@ cD = [c_D0; c_DA2; c_DBs]; % drag force coefficients
 cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
 
 %% Initiation
-init_pos_in_inertial_frame = [-400, -400, -250]; % x-North, z-down, y-East
-init_rpy = [0,      0,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-init_uvw = [5.61,   0,  1.25]; % velocity in body frame
+init_pos_in_inertial_frame = [400, -400, -250]; % x-North, z-down, y-East
+init_rpy = [0,      0.02,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
-
-% init_pos_in_inertial_frame = [-400, -400, -250]; % x-North, z-down, y-East
-% init_rpy = [0,      0.27,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-% init_uvw = [4.05,   0,      1.90]; % velocity in body frame
-% init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
 sampling_T = 0.5; % [seconds]
@@ -89,7 +80,7 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
 mu0 = WindForcast(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
-wind_est_dyn_var = sampling_T * b_w * eye(3);
+wind_est_dyn_var = 1.01* sampling_T * b_w * eye(3); % v ~ N(0, Q), Q matrix
 wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
 
 %% Aerodynamic Coefficients Estimator
