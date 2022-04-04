@@ -2,9 +2,17 @@
 gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
+vel_at6m = 2; % wind velocity at 6m, absolute value
+wind_h = @(h) vel_at6m*log(h/0.04572)/log(6.096/0.04572); % wind shear model
+theta_h = @(h) - 5/6*pi + 1/6*pi * h/300; % forcasted wind field
+GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
+                       wind_h(h).*sin(theta_h(h));
+                       zeros(1,size(h,2))];
+heights = linspace(0.05, 300, 3000);
+wind_profile_hat = GetWindProfile(heights);
 xi_w = 0.4* [randn();
              randn();
-             0]; % xi_w(h) = xi_w * h / 100
+             randn()]; % xi_w(h) = xi_w * h / 100
 a_w = -0.00385;
 b_w = 0.0251; % params from paper 14/16
 
@@ -77,7 +85,7 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
                                       % about [2.3deg, 2.3deg, 0.05m/s]
 
 %% Wind Estimator
-mu0 = WindForcast(-init_pos_in_inertial_frame(3));
+mu0 = WindForcast(-init_pos_in_inertial_frame(3),0);
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
 wind_est_dyn_var = 1.01* sampling_T * b_w * eye(3); % v ~ N(0, Q), Q matrix
