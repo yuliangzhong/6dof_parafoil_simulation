@@ -2,15 +2,17 @@
 gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
-vel_at6m = 2; % wind velocity at 6m, absolute value
+vel_at6m = 1.5; % wind velocity at 6m, absolute value
 wind_h = @(h) vel_at6m*log(h/0.04572)/log(6.096/0.04572); % wind shear model
 theta_h = @(h) - 5/6*pi + 1/6*pi * h/300; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
-heights = linspace(0.05, 300, 3000);
+heights = linspace(0.05, 350, 3500);
 wind_profile_hat = GetWindProfile(heights);
-xi_w = 0.4* randn(3,1); % xi_w(h) = xi_w * h / 100
+xi_w = 0.3* [randn();
+             randn();
+             0.25*randn()]; % wind profile error at 100[m]
 a_w = -0.00385;
 b_w = 0.0251; % params from paper 14/16
 
@@ -66,7 +68,7 @@ cD = [c_D0; c_DA2; c_DBs]; % drag force coefficients
 cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
 
 %% Initiation
-init_pos_in_inertial_frame = [400, -400, -250]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [400, -400, -300]; % x-North, z-down, y-East
 init_rpy = [0,      0.02,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
@@ -88,6 +90,13 @@ sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
 wind_est_dyn_var = 1.1* sampling_T * b_w * eye(3); % v ~ N(0, Q), Q matrix
 wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
+
+%% Wind Predictor
+wind_err0 = zeros(6,100);
+normalize_const = 100; % [m]
+sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
+Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
+
 
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
