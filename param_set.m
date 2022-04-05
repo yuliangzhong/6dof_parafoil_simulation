@@ -92,12 +92,15 @@ wind_est_dyn_var = 1.1* sampling_T * b_w * eye(3); % v ~ N(0, Q), Q matrix
 wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
 
 %% Wind Predictor
-wind_err0 = zeros(6,100);
+wind_err0 = zeros(9,100);
 normalize_const = 100; % [m]
 sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
 Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
 
-
+%% Guidance
+z_dot = 1.41; % descending rate without wind [m/s]
+psi_max = 0.219; % maximum turning angular vel without wind [rad/s]
+xy_dot = 4.6; % horizontal vel without wind [m/s]
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
                 0 0 0; 
