@@ -1,10 +1,12 @@
+% Guidance example
+
 % Use fminsearch to find p_0_star that yields x(T) = x_T
 global init_cond;
 init_cond = [700, -700, pi/2];
 global psi_d 
 psi_d = pi;
 
-[p_0_star, residual, flag, output] = fminsearch(@(P0) ComputeErr(P0),zeros(3,1),optimset('TolFun',1e-7,'TolX',1e-7,'MaxFunEvals',1e5,'MaxIter',1e5));
+[p_0_star, residual, flag, output] = fminsearch(@(P0) ComputeErr(P0),[-1e-5,1e-5,1e-4],optimset('TolFun',1e-7,'TolX',1e-7,'MaxFunEvals',1e5,'MaxIter',1e5));
 disp('-------------')
 disp(flag)
 disp(residual)
@@ -52,5 +54,5 @@ function err = ComputeErr(P0)
           P0(2);
           P0(3)];
     [~, traj] = ode45(@(t,x) ODEdyn(t,x), t_span, x0);
-    err = sqrt(traj(end,1)^2 + traj(end,2)^2) - (cos(traj(end,3) - psi_d) -1);
+    err = sqrt(traj(end,1)^2 + traj(end,2)^2) - 200*((cos(traj(end,3) - psi_d) -1));
 end

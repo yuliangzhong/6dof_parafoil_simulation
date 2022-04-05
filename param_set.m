@@ -99,8 +99,10 @@ Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; %
 
 %% Guidance
 z_dot = 1.41; % descending rate without wind [m/s]
-psi_max = 0.219; % maximum turning angular vel without wind [rad/s]
+psi_dot_max = 0.219; % maximum turning angular vel without wind [rad/s]
 xy_dot = 4.6; % horizontal vel without wind [m/s]
+psi_desire = pi;
+
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
                 0 0 0; 
