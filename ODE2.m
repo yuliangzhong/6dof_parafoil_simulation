@@ -2,7 +2,7 @@
 
 % Use fminsearch to find p_0_star that yields x(T) = x_T
 global init_cond;
-init_cond = [700, -700, pi/2];
+init_cond = [400, -400, pi/2];
 global psi_d 
 psi_d = pi;
 
