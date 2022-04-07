@@ -12,9 +12,10 @@ heights = linspace(0.05, 350, 3500);
 wind_profile_hat = GetWindProfile(heights);
 xi_w = 0.3* [randn();
              randn();
-             0.25*randn()]; % wind profile error at 100[m]
+             0]; % wind profile error at 100[m]
 a_w = -0.00385;
-b_w = 0.0251; % params from paper 14/16
+diag_sigma_zeta = [0.0251, 0.0251, 0.0251]; % diagonal matrix
+% params from paper 14/16
 
 %% Parafoil System
 % params from paper 12
@@ -74,7 +75,7 @@ init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
-sampling_T = 0.5; % [seconds]
+sampling_T = 0.4; % [seconds] >=0.2s in simulation
 row_pitch_accu = 0.2; % [degree]
 yaw_accu = 1; % [degree]
 pos_accu = 1; % [m]
@@ -88,8 +89,8 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
-wind_est_dyn_var = 1.1* sampling_T * b_w * eye(3); % v ~ N(0, Q), Q matrix
-wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
+wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
+wind_est_noise_var = 0.01*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 
 %% Wind Predictor
 wind_err0 = zeros(9,100);
