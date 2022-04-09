@@ -3,6 +3,8 @@ gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
 vel_at6m = 1.5; % wind velocity at 6m, absolute value
+theta = -60; % [deg]
+
 wind_h = @(h) vel_at6m*log(h/0.04572)/log(6.096/0.04572); % wind shear model
 theta_h = @(h) - 1/3*pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
@@ -10,9 +12,9 @@ GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
 heights = linspace(0.05, 350, 3500);
 wind_profile_hat = GetWindProfile(heights);
-xi_w = 0.2* [randn();
-             randn();
-             0]; % wind profile error at 100[m]
+xi = 0.1* [randn();
+           randn();
+           0]; % wind profile error at 200[m]
 a_w = -0.0385;
 diag_sigma_zeta = [0.0251, 0.0251, 0.0251]; % diagonal matrix
 % params from paper 14/16
