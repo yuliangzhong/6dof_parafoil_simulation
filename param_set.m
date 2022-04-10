@@ -3,10 +3,10 @@ gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
 vel_at6m = 1.5; % wind velocity at 6m, absolute value
-theta = -60; % [deg]
+theta = 120; % [deg] constant
 
 wind_h = @(h) vel_at6m*log(h/0.04572)/log(6.096/0.04572); % wind shear model
-theta_h = @(h) - 1/3*pi; % forcasted wind field
+theta_h = @(h) 2/3*pi + pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
@@ -77,7 +77,7 @@ init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
-sampling_T = 0.4; % [seconds] >=0.2s in simulation
+sampling_T = 0.2;
 row_pitch_accu = 0.2; % [degree]
 yaw_accu = 1; % [degree]
 pos_accu = 1; % [m]
@@ -91,11 +91,11 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
-wind_est_dyn_var = 1 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
-wind_est_noise_var = 0.03*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
+wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
+wind_est_noise_var = 0.01*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 
 %% Wind Predictor
-wind_err0 = zeros(7,100);
+wind_err0 = zeros(4,100);
 normalize_const = 100; % [m]
 sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
 Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
