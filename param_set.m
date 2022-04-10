@@ -3,18 +3,31 @@ gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
 vel_at6m = 1.5; % wind velocity at 6m, absolute value
+theta = 120; % [deg] constant
+
 wind_h = @(h) vel_at6m*log(h/0.04572)/log(6.096/0.04572); % wind shear model
-theta_h = @(h) - 5/6*pi + 1/6*pi * h/300; % forcasted wind field
+theta_h = @(h) 2/3*pi + pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
-heights = linspace(0.05, 350, 3500);
+wind_pf_size = 7000;
+heights = linspace(0.05, 350, wind_pf_size);
+dh = (heights(end) - heights(1))/(wind_pf_size - 1);
 wind_profile_hat = GetWindProfile(heights);
-xi_w = 0.3* [randn();
-             randn();
-             0.25*randn()]; % wind profile error at 100[m]
-a_w = -0.00385;
-b_w = 0.0251; % params from paper 14/16
+Delta_sw = [(0+wind_profile_hat(1,1))*dh/2*ones(1, wind_pf_size);
+             (0+wind_profile_hat(2,1))*dh/2*ones(1, wind_pf_size);
+             (0+wind_profile_hat(3,1))*dh/2*ones(1, wind_pf_size)];
+for i = 2:wind_pf_size
+    Delta_sw(:,i) = Delta_sw(:,i)+[trapz(heights(1:i), wind_profile_hat(1, 1:i));
+                                   trapz(heights(1:i), wind_profile_hat(2, 1:i));
+                                   trapz(heights(1:i), wind_profile_hat(3, 1:i))];
+end % Remember /Vz!!
+xi = 0.1* [randn();
+           randn();
+           0]; % wind profile error at 200[m]
+a_w = -0.0385;
+diag_sigma_zeta = [0.0251, 0.0251, 0.0251]; % diagonal matrix
+% params from paper 14/16
 
 %% Parafoil System
 % params from paper 12
@@ -68,13 +81,13 @@ cD = [c_D0; c_DA2; c_DBs]; % drag force coefficients
 cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
 
 %% Initiation
-init_pos_in_inertial_frame = [400, -400, -300]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [200, -200, -300]; % x-North, z-down, y-East
 init_rpy = [0,      0.02,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
-sampling_T = 0.5; % [seconds]
+sampling_T = 0.2;
 row_pitch_accu = 0.2; % [degree]
 yaw_accu = 1; % [degree]
 pos_accu = 1; % [m]
@@ -88,21 +101,22 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
-wind_est_dyn_var = 1.1* sampling_T * b_w * eye(3); % v ~ N(0, Q), Q matrix
-wind_est_noise_var = 0.5*eye(3); % d ~ N(0, R), R matrix, sensor noise
+wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
+wind_est_noise_var = 0.01*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 
 %% Wind Predictor
-wind_err0 = zeros(9,100);
+wind_err0 = zeros(4,100);
 normalize_const = 100; % [m]
 sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
 Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
 
 %% Guidance
-z_dot = 1.41; % descending rate without wind [m/s]
-psi_dot_max = 0.219; % maximum turning angular vel without wind [rad/s]
-xy_dot = 4.6; % horizontal vel without wind [m/s]
+z_dot = 1.39; % descending rate without wind [m/s]
+psi_dot_max = 0.2187; % maximum turning angular vel without wind [rad/s]
+xy_dot = 4.59; % horizontal vel without wind [m/s]
 psi_desire = pi;
 guidance_0 = zeros(2,2000);
+
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
                 0 0 0; 
