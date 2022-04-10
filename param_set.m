@@ -10,8 +10,18 @@ theta_h = @(h) 2/3*pi + pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
-heights = linspace(0.05, 350, 3500);
+wind_pf_size = 7000;
+heights = linspace(0.05, 350, wind_pf_size);
+dh = (heights(end) - heights(1))/(wind_pf_size - 1);
 wind_profile_hat = GetWindProfile(heights);
+Delta_sw = [(0+wind_profile_hat(1,1))*dh/2*ones(1, wind_pf_size);
+             (0+wind_profile_hat(2,1))*dh/2*ones(1, wind_pf_size);
+             (0+wind_profile_hat(3,1))*dh/2*ones(1, wind_pf_size)];
+for i = 2:wind_pf_size
+    Delta_sw(:,i) = Delta_sw(:,i)+[trapz(heights(1:i), wind_profile_hat(1, 1:i));
+                                   trapz(heights(1:i), wind_profile_hat(2, 1:i));
+                                   trapz(heights(1:i), wind_profile_hat(3, 1:i))];
+end % Remember /Vz!!
 xi = 0.1* [randn();
            randn();
            0]; % wind profile error at 200[m]
@@ -101,9 +111,9 @@ sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
 Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
 
 %% Guidance
-z_dot = 1.41; % descending rate without wind [m/s]
-psi_dot_max = 0.219; % maximum turning angular vel without wind [rad/s]
-xy_dot = 4.6; % horizontal vel without wind [m/s]
+z_dot = 1.39; % descending rate without wind [m/s]
+psi_dot_max = 0.2187; % maximum turning angular vel without wind [rad/s]
+xy_dot = 4.59; % horizontal vel without wind [m/s]
 psi_desire = pi;
 guidance_0 = zeros(2,2000);
 
