@@ -14,11 +14,11 @@ wind_pf_size = 7000;
 heights = linspace(0.05, 350, wind_pf_size);
 dh = (heights(end) - heights(1))/(wind_pf_size - 1);
 wind_profile_hat = GetWindProfile(heights);
-Delta_sw = [(0+wind_profile_hat(1,1))*dh/2*ones(1, wind_pf_size);
+Delta_s = [(0+wind_profile_hat(1,1))*dh/2*ones(1, wind_pf_size);
              (0+wind_profile_hat(2,1))*dh/2*ones(1, wind_pf_size);
              (0+wind_profile_hat(3,1))*dh/2*ones(1, wind_pf_size)];
 for i = 2:wind_pf_size
-    Delta_sw(:,i) = Delta_sw(:,i)+[trapz(heights(1:i), wind_profile_hat(1, 1:i));
+    Delta_s(:,i) = Delta_s(:,i)+[trapz(heights(1:i), wind_profile_hat(1, 1:i));
                                    trapz(heights(1:i), wind_profile_hat(2, 1:i));
                                    trapz(heights(1:i), wind_profile_hat(3, 1:i))];
 end % Remember /Vz!!
