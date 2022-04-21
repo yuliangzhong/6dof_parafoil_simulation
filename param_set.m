@@ -105,7 +105,7 @@ wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q
 wind_est_noise_var = 0.01*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 
 %% Wind Predictor
-wind_err0 = zeros(4,50);
+wind_err0 = zeros(4,10);
 normalize_const = 100; % [m]
 sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
 Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
