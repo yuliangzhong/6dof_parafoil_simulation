@@ -1,7 +1,8 @@
 % TODO
-
+psi_dot_max = 0.2187;
 xy_dot = 4.59;
 z_dot = 1.39;
+um = psi_dot_max / z_dot;
 
 guidance = out.guidance.signals.values(:,:,end);
 wind_err = out.wind_err.signals.values(:,:,end);
@@ -23,7 +24,7 @@ dh = (guidance(3,1) - guidance(3,end))/(2000 - 1);
 Ts = dh / z_dot;
 
 init_pose = [xc - x0; yc - y0; psi_c];
-N = 50;
+N = 1000;
 
 ref = zeros(2,N);
 for i = 2:N
@@ -35,47 +36,58 @@ for i = 2:N
     end
 end
 
+Prob = casadi.Opti();
+% --- define optimization variables ---
+X = Prob.variable(3, N);
+U = Prob.variable(1, N-1);
+
+% --- calculate trajectory and objective ---
+objective = 0;
+X_0 = init_pose;
+Q = diag([100,100]);
+r = 1000;
+
+for i = 2:N
+    if ref(:,i) == ref(:,i-1)
+        X(:,i) = X(:,i-1);
+    else
+        X(:,i) = X(:,i-1) + [Ts * (xy_dot * cos(X(3,i-1)) + dx);
+                             Ts * (xy_dot * sin(X(3,i-1)) + dy);
+                             Ts * U(i-1)];
+    end
+    objective = objective + (X(1:2,i) - ref(:,i))'*Q*(X(1:2,i) - ref(:,i)) + r*U(i-1)^2;
+end
+
+Prob.minimize(objective)
+
+% --- define constraints ---
+Prob.subject_to(X(:,1)==X_0);
+for i = 1:N-1
+    Prob.subject_to(U(i)<=um);
+    Prob.subject_to(U(i)>=-um);
+end
+Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
+sol = Prob.solve();
+
+if sol.stats.success
+    us = sol.value(U)
+else
+    disp("MPC Solution not found")
+end
+
+% plot
 hold on;
 plot(ref(2,:),ref(1,:))
 
-
-% [U_star, ~, flag] = fminsearch(@(U) Loss(U, init_pose, dx, dy, N, ref, xy_dot, Ts),zeros(1,N-1),optimset('TolFun',1e-7,'TolX',1e-7,'MaxFunEvals',1e5,'MaxIter',1e5));
-% disp(flag)
-% if flag
-% %     control(1,:) = Guide(3,id)*ones(1,N);
-% %     control(2,:) = psi_c * ones(1,N);
-% %     for i = 2:N
-% %         control(:,i) = control(:,i-1) + [-dh;
-% %                                          Ts * U_star(i-1)];
-% %     end
-%     pos = init_pose * ones(1,N);
-%     for i = 2:N
-%         if ref(:,i) == ref(:,i-1)
-%             pos(:,i) = pos(:,i-1);
-%         else
-%             pos(:,i) = pos(:,i-1) + [Ts * (xy_dot * cos(pos(3,i-1)) + dx);
-%                                      Ts * (xy_dot * sin(pos(3,i-1)) + dy);
-%                                      Ts * U_star(i-1)];
-%         end
-%     end
-% end
-% 
-% plot(pos(1,:), pos(2,:))
-
-
-function loss = Loss(U, init_pose, dx, dy, N, ref, xy_dot, Ts)
-    loss = 0;
-    pos = init_pose * ones(1,N);
-    Q = diag([100,100]);
-    r = 1000;
-    for i = 2:N
-        if ref(:,i) == ref(:,i-1)
-            pos(:,i) = pos(:,i-1);
-        else
-            pos(:,i) = pos(:,i-1) + [Ts * (xy_dot * cos(pos(3,i-1)) + dx);
-                                     Ts * (xy_dot * sin(pos(3,i-1)) + dy);
-                                     Ts * U(i-1)];
-        end
-        loss = loss + (pos(1:2,i) - ref(:,i))'*Q*(pos(1:2,i) - ref(:,i)) + r*U(i-1)^2;
+pos = init_pose * ones(1,N);
+for i = 2:N
+    if ref(:,i) == ref(:,i-1)
+        pos(:,i) = pos(:,i-1);
+    else
+        pos(:,i) = pos(:,i-1) + [Ts * (xy_dot * cos(pos(3,i-1)) + dx);
+                                 Ts * (xy_dot * sin(pos(3,i-1)) + dy);
+                                 Ts * us(i-1)];
     end
 end
+
+plot(pos(2,:),pos(1,:))
