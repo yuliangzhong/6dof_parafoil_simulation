@@ -15,8 +15,8 @@ heights = linspace(0.05, 350, wind_pf_size);
 dh = (heights(end) - heights(1))/(wind_pf_size - 1);
 wind_profile_hat = GetWindProfile(heights);
 Delta_s = [(0+wind_profile_hat(1,1))*dh/2*ones(1, wind_pf_size);
-             (0+wind_profile_hat(2,1))*dh/2*ones(1, wind_pf_size);
-             (0+wind_profile_hat(3,1))*dh/2*ones(1, wind_pf_size)];
+           (0+wind_profile_hat(2,1))*dh/2*ones(1, wind_pf_size);
+           (0+wind_profile_hat(3,1))*dh/2*ones(1, wind_pf_size)];
 for i = 2:wind_pf_size
     Delta_s(:,i) = Delta_s(:,i)+[trapz(heights(1:i), wind_profile_hat(1, 1:i));
                                    trapz(heights(1:i), wind_profile_hat(2, 1:i));
@@ -124,9 +124,3 @@ aeroF_co_mu0 = [0 0 0;
                 3 3 3]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
 aeroF_co_sigma0 = 0.01*[diag([1,1,1,1]), diag([1,1,1,1]), diag([1,1,1,1])];
 aeroF_est_noise_var = 0.0005*eye(3);
-
-
-
-
-
-
