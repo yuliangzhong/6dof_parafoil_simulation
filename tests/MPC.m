@@ -24,7 +24,7 @@ dh = (guidance(3,1) - guidance(3,end))/(2000 - 1);
 Ts = dh / z_dot;
 
 init_pose = [xc - x0; yc - y0; psi_c];
-N = 1000;
+N = 50;
 
 ref = zeros(2,N);
 for i = 2:N
@@ -35,6 +35,7 @@ for i = 2:N
                                  Ts * xy_dot * sin(guidance(4,id+i-2))];
     end
 end
+
 
 Prob = casadi.Opti();
 % --- define optimization variables ---
@@ -70,7 +71,7 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 sol = Prob.solve();
 
 if sol.stats.success
-    us = sol.value(U)
+    us = sol.value(U);
 else
     disp("MPC Solution not found")
 end
