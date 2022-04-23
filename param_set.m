@@ -117,6 +117,10 @@ xy_dot = 4.59; % horizontal vel without wind [m/s]
 psi_desire = pi;
 guidance_0 = zeros(2,2000);
 
+%% MPC Tracker
+time_horizon_N = 20; % should not exceed 1000
+control0 = zeros(2, time_horizon_N);
+
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
                 0 0 0; 

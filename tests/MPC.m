@@ -4,6 +4,7 @@ xy_dot = 4.59;
 z_dot = 1.39;
 um = psi_dot_max / z_dot;
 
+% index = 2252;
 guidance = out.guidance.signals.values(:,:,end);
 wind_err = out.wind_err.signals.values(:,:,end);
 C_BI = out.C_BI.signals.values(:,:,end);
@@ -23,57 +24,67 @@ dy = mean(wind_err(3,:));
 dh = (guidance(3,1) - guidance(3,end))/(2000 - 1);
 Ts = dh / z_dot;
 
-init_pose = [xc - x0; yc - y0; psi_c];
+init_pose = [xc - x0; yc - y0-10; psi_c];
 N = 50;
 
-ref = zeros(2,N);
+ref = zeros(3,N);
+ref(3,1) = guidance(4,id);
 for i = 2:N
     if id+i-2>2000
         ref(:,i) = ref(:,i-1);
     else
-        ref(:,i) = ref(:,i-1) + [Ts * xy_dot * cos(guidance(4,id+i-2));
-                                 Ts * xy_dot * sin(guidance(4,id+i-2))];
+        ref(:,i) =  [ref(1,i-1) + Ts * xy_dot * cos(guidance(4,id+i-2));
+                     ref(2,i-1) + Ts * xy_dot * sin(guidance(4,id+i-2))
+                     guidance(4,id+i-1)];
     end
 end
 
+Qpos = diag([100,100]);
+Qpsi = 10000;
+r = 1000;
 
 Prob = casadi.Opti();
 % --- define optimization variables ---
 X = Prob.variable(3, N);
 U = Prob.variable(1, N-1);
 
-% --- calculate trajectory and objective ---
+% --- calculate objective ---
 objective = 0;
-X_0 = init_pose;
-Q = diag([100,100]);
-r = 1000;
-
 for i = 2:N
-    if ref(:,i) == ref(:,i-1)
-        X(:,i) = X(:,i-1);
-    else
-        X(:,i) = X(:,i-1) + [Ts * (xy_dot * cos(X(3,i-1)) + dx);
-                             Ts * (xy_dot * sin(X(3,i-1)) + dy);
-                             Ts * U(i-1)];
-    end
-    objective = objective + (X(1:2,i) - ref(:,i))'*Q*(X(1:2,i) - ref(:,i)) + r*U(i-1)^2;
+    objective = objective + (X(1:2,i) - ref(1:2,i))'*Qpos*(X(1:2,i) - ref(1:2,i)) ...
+                          + Qpsi*(1 - cos(X(3,i) - ref(3,i))) ...
+                          + r*U(i-1)^2;
 end
-
 Prob.minimize(objective)
 
 % --- define constraints ---
+X_0 = init_pose;
 Prob.subject_to(X(:,1)==X_0);
-for i = 1:N-1
-    Prob.subject_to(U(i)<=um);
-    Prob.subject_to(U(i)>=-um);
+for i = 2:N
+    Prob.subject_to(U(i-1)<=um);
+    Prob.subject_to(U(i-1)>=-um);
+    if abs(ref(:,i) - ref(:,i-1)) < 1e-8
+        Prob.subject_to(X(:,i) == X(:,i-1));
+    else
+        Prob.subject_to(X(:,i) == X(:,i-1) + [Ts * (xy_dot * cos(X(3,i-1)) + dx);
+                                              Ts * (xy_dot * sin(X(3,i-1)) + dy);
+                                              Ts * U(i-1)]);
+    end
 end
+
+% --- define solver ---
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 sol = Prob.solve();
 
-if sol.stats.success
+% --- output ---
+flag = sol.stats.success;
+if flag
+    xs = sol.value(X);
     us = sol.value(U);
 else
     disp("MPC Solution not found")
+    xs = zeros(3,N);
+    us = zeros(1,N-1);
 end
 
 % plot
