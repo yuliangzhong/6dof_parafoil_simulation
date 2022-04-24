@@ -1,4 +1,4 @@
-function [flag, xs, us] = MPC_func(N, init_pose, Q, r, ref, Ts, xy_dot, um, dx, dy)
+function [flag, xs, us] = MPC_func(N, init_pose, Q, r, Qn, ref, Ts, xy_dot, um, dx, dy)
 
     Prob = casadi.Opti();
     % --- define optimization variables ---
@@ -8,11 +8,21 @@ function [flag, xs, us] = MPC_func(N, init_pose, Q, r, ref, Ts, xy_dot, um, dx, 
     % --- calculate objective ---
     Qpos = Q(1:2, 1:2);
     Qpsi = Q(3,3);
+    Qnpos = Qn(1:2, 1:2);
+    Qnpsi = Qn(3,3);
+
     objective = 0;
+    
     for i = 2:N
-    objective = objective + (X(1:2,i) - ref(1:2,i))'*Qpos*(X(1:2,i) - ref(1:2,i)) ...
-                          + Qpsi*(1-cos(X(3,i) - ref(3,i))) ...
-                          + r*U(i-1)^2;   
+        if norm(ref(:,i) - ref(:,i-1)) < 1e-6
+            objective = objective + (X(1:2,i) - ref(1:2,i))'* Qnpos *(X(1:2,i) - ref(1:2,i)) ...
+                                  + Qnpsi *(1 - cos(X(3,i) - ref(3,i))) ...
+                                  + r * U(i-1)^2;
+        else
+            objective = objective + (X(1:2,i) - ref(1:2,i))'* Qpos *(X(1:2,i) - ref(1:2,i)) ...
+                                  + Qpsi * (1 - cos(X(3,i) - ref(3,i))) ...
+                                  + r * U(i-1)^2;
+        end
     end
     Prob.minimize(objective)
     
@@ -22,7 +32,7 @@ function [flag, xs, us] = MPC_func(N, init_pose, Q, r, ref, Ts, xy_dot, um, dx, 
     for i = 2:N
         Prob.subject_to(U(i-1)<=um);
         Prob.subject_to(U(i-1)>=-um);
-        if abs(ref(:,i) - ref(:,i-1)) < 1e-8
+        if norm(ref(:,i) - ref(:,i-1)) < 1e-6
             Prob.subject_to(X(:,i) == X(:,i-1));
         else
             Prob.subject_to(X(:,i) == X(:,i-1) + [Ts * (xy_dot * cos(X(3,i-1)) + dx);

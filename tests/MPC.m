@@ -24,13 +24,13 @@ dy = mean(wind_err(3,:));
 dh = (guidance(3,1) - guidance(3,end))/(2000 - 1);
 Ts = dh / z_dot;
 
-init_pose = [xc - x0; yc - y0-10; psi_c];
+init_pose = [xc - x0; yc - y0; psi_c];
 N = 50;
 
 ref = zeros(3,N);
 ref(3,1) = guidance(4,id);
 for i = 2:N
-    if id+i-2>2000
+    if id+i-1>2000
         ref(:,i) = ref(:,i-1);
     else
         ref(:,i) =  [ref(1,i-1) + Ts * xy_dot * cos(guidance(4,id+i-2));
@@ -39,21 +39,30 @@ for i = 2:N
     end
 end
 
-Qpos = diag([100,100]);
-Qpsi = 10000;
-r = 1000;
-
 Prob = casadi.Opti();
 % --- define optimization variables ---
 X = Prob.variable(3, N);
 U = Prob.variable(1, N-1);
 
 % --- calculate objective ---
+Qpos = diag([100,100]);
+Qpsi = 10000;
+Qnpos = diag([10000,10000]);
+Qnpsi = 10; 
+r = 1000;
+
 objective = 0;
+
 for i = 2:N
-    objective = objective + (X(1:2,i) - ref(1:2,i))'*Qpos*(X(1:2,i) - ref(1:2,i)) ...
-                          + Qpsi*(1 - cos(X(3,i) - ref(3,i))) ...
-                          + r*U(i-1)^2;
+    if norm(ref(:,i) - ref(:,i-1)) < 1e-6
+        objective = objective + (X(1:2,i) - ref(1:2,i))'* Qnpos *(X(1:2,i) - ref(1:2,i)) ...
+                              + Qnpsi *(1 - cos(X(3,i) - ref(3,i))) ...
+                              + r * U(i-1)^2;
+    else
+        objective = objective + (X(1:2,i) - ref(1:2,i))'* Qpos *(X(1:2,i) - ref(1:2,i)) ...
+                              + Qpsi * (1 - cos(X(3,i) - ref(3,i))) ...
+                              + r * U(i-1)^2;
+    end
 end
 Prob.minimize(objective)
 
@@ -63,7 +72,7 @@ Prob.subject_to(X(:,1)==X_0);
 for i = 2:N
     Prob.subject_to(U(i-1)<=um);
     Prob.subject_to(U(i-1)>=-um);
-    if abs(ref(:,i) - ref(:,i-1)) < 1e-8
+    if norm(ref(:,i) - ref(:,i-1)) < 1e-6
         Prob.subject_to(X(:,i) == X(:,i-1));
     else
         Prob.subject_to(X(:,i) == X(:,i-1) + [Ts * (xy_dot * cos(X(3,i-1)) + dx);
