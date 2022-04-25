@@ -1,27 +1,26 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
 
-%% Wind Profile and Wind Gust Dynamics
+%% Wind Profile, Pos Compensation and Wind Gust Dynamics
 vel_at6m = 1.5; % wind velocity at 6m, absolute value
 theta = 120; % [deg] constant
 
-wind_h = @(h) vel_at6m*log(h/0.04572)/log(6.096/0.04572); % wind shear model
-theta_h = @(h) 2/3*pi + pi; % forcasted wind field
+wind_h = @(h) (h>0.04572)*vel_at6m.*log(h/0.04572)/log(6.096/0.04572); % wind shear model
+theta_h = @(h) theta/180*pi + pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
 wind_pf_size = 7000;
-heights = linspace(0.05, 350, wind_pf_size);
-dh = (heights(end) - heights(1))/(wind_pf_size - 1);
+heights = linspace(1e-6, 350, wind_pf_size); % start from 0+ avoiding NaN
 wind_profile_hat = GetWindProfile(heights);
-Delta_s = [(0+wind_profile_hat(1,1))*dh/2*ones(1, wind_pf_size);
-           (0+wind_profile_hat(2,1))*dh/2*ones(1, wind_pf_size);
-           (0+wind_profile_hat(3,1))*dh/2*ones(1, wind_pf_size)];
+
+Delta_s = zeros(3,wind_pf_size);
 for i = 2:wind_pf_size
-    Delta_s(:,i) = Delta_s(:,i)+[trapz(heights(1:i), wind_profile_hat(1, 1:i));
-                                   trapz(heights(1:i), wind_profile_hat(2, 1:i));
-                                   trapz(heights(1:i), wind_profile_hat(3, 1:i))];
+    Delta_s(:,i) = [trapz(heights(1:i), wind_profile_hat(1, 1:i));
+                    trapz(heights(1:i), wind_profile_hat(2, 1:i));
+                    trapz(heights(1:i), wind_profile_hat(3, 1:i))];
 end % Remember /Vz!!
+
 xi = 0.1* [randn();
            randn();
            0]; % wind profile error at 200[m]

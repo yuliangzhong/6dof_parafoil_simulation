@@ -27,6 +27,7 @@ Ts = dh / z_dot;
 init_pose = [xc - x0; yc - y0; psi_c];
 N = 50;
 
+% Compute ref trajectory
 ref = zeros(3,N);
 ref(3,1) = guidance(4,id);
 for i = 2:N
@@ -39,17 +40,20 @@ for i = 2:N
     end
 end
 
+Q = diag([100, 100, 10000]);
+Qn = diag([1000, 1000, 100]);
+r = 1000;
+
 Prob = casadi.Opti();
 % --- define optimization variables ---
 X = Prob.variable(3, N);
 U = Prob.variable(1, N-1);
 
 % --- calculate objective ---
-Qpos = diag([100,100]);
-Qpsi = 10000;
-Qnpos = diag([10000,10000]);
-Qnpsi = 10; 
-r = 1000;
+Qpos = Q(1:2, 1:2);
+Qpsi = Q(3,3);
+Qnpos = Qn(1:2, 1:2);
+Qnpsi = Qn(3,3);
 
 objective = 0;
 
@@ -80,6 +84,7 @@ for i = 2:N
                                               Ts * U(i-1)]);
     end
 end
+
 
 % --- define solver ---
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
