@@ -21,7 +21,7 @@ for i = 2:wind_pf_size
                     trapz(heights(1:i), wind_profile_hat(3, 1:i))];
 end % Remember /Vz!!
 
-xi = 0.1* [randn();
+xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
 a_w = -0.0385;
@@ -89,7 +89,7 @@ init_pqr = [0,  0,  0]; % angular velocity in body frame
 sampling_T = 0.2;
 row_pitch_accu = 0.2; % [degree]
 yaw_accu = 1; % [degree]
-pos_accu = 1; % [m]
+pos_accu = 0.5; % [m]
 vel_accu = 0.05; % [m/s]
 acc_accu = 0.5; % [m/s^2]
 angVel_accu = 0.02; %[deg/s]

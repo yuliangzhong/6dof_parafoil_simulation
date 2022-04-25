@@ -40,6 +40,7 @@ for i = 2:N
     end
 end
 
+P = diag([10000,10000,100]);
 Q = diag([100, 100, 10000]);
 Qn = diag([1000, 1000, 100]);
 r = 1000;
@@ -49,39 +50,31 @@ Prob = casadi.Opti();
 X = Prob.variable(3, N);
 U = Prob.variable(1, N-1);
 
-% --- calculate objective ---
-Qpos = Q(1:2, 1:2);
-Qpsi = Q(3,3);
-Qnpos = Qn(1:2, 1:2);
-Qnpsi = Qn(3,3);
-
+% --- calculate objective --- 
 objective = 0;
 
-for i = 2:N
-    if norm(ref(:,i) - ref(:,i-1)) < 1e-6
-        objective = objective + (X(1:2,i) - ref(1:2,i))'* Qnpos *(X(1:2,i) - ref(1:2,i)) ...
-                              + Qnpsi *(1 - cos(X(3,i) - ref(3,i))) ...
-                              + r * U(i-1)^2;
-    else
-        objective = objective + (X(1:2,i) - ref(1:2,i))'* Qpos *(X(1:2,i) - ref(1:2,i)) ...
-                              + Qpsi * (1 - cos(X(3,i) - ref(3,i))) ...
-                              + r * U(i-1)^2;
-    end
+for i = 1:N-1
+    objective = objective + (X(1:2,i) - ref(1:2,i))'* Q(1:2, 1:2) *(X(1:2,i) - ref(1:2,i)) ...
+                          + Q(3,3) * (1 - cos(X(3,i) - ref(3,i))) ...
+                          + r * U(i)^2;
 end
+objective = objective + (X(1:2,N) - ref(1:2,N))'* P(1:2, 1:2) *(X(1:2,N) - ref(1:2,N)) ...
+                      + P(3,3) *(1 - cos(X(3,N) - ref(3,N)));
+
 Prob.minimize(objective)
 
 % --- define constraints ---
 X_0 = init_pose;
 Prob.subject_to(X(:,1)==X_0);
-for i = 2:N
-    Prob.subject_to(U(i-1)<=um);
-    Prob.subject_to(U(i-1)>=-um);
-    if norm(ref(:,i) - ref(:,i-1)) < 1e-6
-        Prob.subject_to(X(:,i) == X(:,i-1));
+for i = 1:N-1
+    Prob.subject_to(U(i)<=um);
+    Prob.subject_to(U(i)>=-um);
+    if norm(ref(:,i+1) - ref(:,i)) < 1e-6
+        Prob.subject_to(X(:,i+1) == X(:,i));
     else
-        Prob.subject_to(X(:,i) == X(:,i-1) + [Ts * (xy_dot * cos(X(3,i-1)) + dx);
-                                              Ts * (xy_dot * sin(X(3,i-1)) + dy);
-                                              Ts * U(i-1)]);
+        Prob.subject_to(X(:,i+1) == X(:,i) + [Ts * xy_dot * cos(X(3,i));
+                                              Ts * xy_dot * sin(X(3,i));
+                                              Ts * U(i)]);
     end
 end
 
