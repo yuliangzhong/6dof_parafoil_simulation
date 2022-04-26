@@ -35,7 +35,7 @@ for i = 2:N
         ref(:,i) = ref(:,i-1);
     else
         ref(:,i) =  [ref(1,i-1) + Ts * xy_dot * cos(guidance(4,id+i-2));
-                     ref(2,i-1) + Ts * xy_dot * sin(guidance(4,id+i-2))
+                     ref(2,i-1) + Ts * xy_dot * sin(guidance(4,id+i-2));
                      guidance(4,id+i-1)];
     end
 end
