@@ -2,7 +2,7 @@
 psi_dot_max = 0.2187;
 xy_dot = 4.59;
 z_dot = 1.39;
-um = psi_dot_max / z_dot;
+um = psi_dot_max;
 
 % index = 2252;
 guidance = out.guidance.signals.values(:,:,end);
