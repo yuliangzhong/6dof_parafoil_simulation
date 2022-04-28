@@ -1,28 +1,18 @@
+function [flag, xs, us] = MPC_2d_path_following_func(x0, y0, h0, psi0, guidance_in_wind)
+
 % Params
 psi_dot_max = 0.2187;
 xy_dot = 4.59;
 z_dot = 1.39;
 um = psi_dot_max;
 
-% get current state
-guidance_in_wind = out.guidance_in_wind.signals.values(:,:,end);
-wind_err = out.wind_err.signals.values(:,:,end);
-C_BI = out.C_BI.signals.values(:,:,end);
-I_r_IB = out.I_r_IB.signals.values(end,:);
-
-h = -I_r_IB(3);
-x0 = I_r_IB(1) + (1/z_dot)*interp1(heights, Delta_s(1,:), h,'linear','extrap');
-y0 = I_r_IB(2) + (1/z_dot)*interp1(heights, Delta_s(2,:), h,'linear','extrap');
-C_IB = C_BI';
-psi0 = atan2(C_IB(2,1), C_IB(1,1));
-
-[~, id] = min(abs(guidance_in_wind(3,:) - h*ones(1,2000)));
+[~, id] = min(abs(guidance_in_wind(3,:) - h0*ones(1,2000)));
 xd = guidance_in_wind(1,id);
 yd = guidance_in_wind(2,id);
 hd = guidance_in_wind(3,id);
 psid = guidance_in_wind(4,id);
 
-disp([x0, y0, h, psi0])
+disp([x0, y0, h0, psi0])
 disp([xd, yd, hd, psid])
 
 % fitting --> fx, fy, fpsi
@@ -105,21 +95,8 @@ if flag
     us = sol.value(U);
 else
     disp("MPC Solution not found")
-    xs = zeros(3,N);
-    us = zeros(1,N-1);
-end
-% 
-% % plot
-hold on
-grid on
-plot(guidance_in_wind(2,id:idn),guidance_in_wind(1,id:idn), 'b')
-states = [x0; y0; psi0; hd] * ones(1,N+1);
-for i = 1:N
-    states(:,i+1) = states(:,i) + Ts* [xy_dot * cos(xs(3,i));
-                                       xy_dot * sin(xs(3,i));
-                                       us(1,i);
-                                       -us(2,i)];
+    xs = zeros(4,N+1);
+    us = zeros(2,N);
 end
 
-plot(states(2,:),states(1,:), 'k')
-hold off
+end
