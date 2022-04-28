@@ -27,8 +27,8 @@ function [flag, xs, us] = MPC_func(N, init_pose, P, Q, r, Qn, ref, Ts, xy_dot, u
         if norm(ref(:,i+1) - ref(:,i)) < 1e-6
             Prob.subject_to(X(:,i+1) == X(:,i));
         else
-            Prob.subject_to(X(:,i+1) == X(:,i) + [Ts * xy_dot * cos(X(3,i));
-                                                  Ts * xy_dot * sin(X(3,i));
+            Prob.subject_to(X(:,i+1) == X(:,i) + [Ts * (xy_dot * cos(X(3,i)) + dx);
+                                                  Ts * (xy_dot * sin(X(3,i)) + dy);
                                                   Ts * U(i)]);
         end
     end

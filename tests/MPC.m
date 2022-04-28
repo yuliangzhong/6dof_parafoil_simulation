@@ -8,7 +8,7 @@ um = psi_dot_max;
 guidance = out.guidance.signals.values(:,:,end);
 wind_err = out.wind_err.signals.values(:,:,end);
 C_BI = out.C_BI.signals.values(:,:,end);
-I_r_IB = out.I_r_IB.signals.values(:,:,end);
+I_r_IB = out.I_r_IB.signals.values(end,:);
 
 xc = I_r_IB(1);
 yc = I_r_IB(2);
