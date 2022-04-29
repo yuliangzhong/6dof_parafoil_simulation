@@ -33,7 +33,6 @@ Ts = 0.1;
 % P = diag([100,100,10000]);
 Q = diag([1000, 1000]);
 R = diag([1000, 1000]);
-r = 100000;
 q_theta = 100;
 
 Prob = casadi.Opti();
@@ -52,7 +51,6 @@ for i = 2:N
     dv = U(2,i) - U(2,i-1);
     objective = objective + [es_c, es_l]* Q * [es_c, es_l]' ...
                           + q_theta * X(4,i) ...
-                          + r*U(1,i)^2 ...
                           + [du, dv]* R *[du, dv]';
 end
 psi = fpsi(X(4,N+1));
