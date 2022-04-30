@@ -24,8 +24,11 @@ end % Remember /Vz!!
 xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
+
 a_w = -0.0385;
 diag_sigma_zeta = [0.0251, 0.0251, 0.0251]; % diagonal matrix
+% set delta_w sampling time = 0.2s
+
 % params from paper 14/16
 
 %% Parafoil System
@@ -50,34 +53,34 @@ C_BW = eye(3); % from body frame B to payload frame W;
 B_r_BW = [0; 0; 0.1];
 
 [Im, Ii] = ImIiCompute(parafoil_arc_h, parafoil_ref_span, ...
-                    parafoil_ref_length, parafoil_thickness);
+                       parafoil_ref_length, parafoil_thickness);
 
 
 %% Aero Coefficients
 %--- from paper 12 and book ch5
 c_L0 = 0.24; % lift force coefficient
-c_LA = 2.14;
-c_LBs = 0.1670;
+c_La = 2.14;
+c_Lds = 0.1670;
 
 c_D0 = 0.12;
-c_DA2 = 0.33;
-c_DBs = 0.043;
+c_Da2 = 0.33;
+c_Dds = 0.043;
 
 c_Yb = 0.23;
 
 c_lp = -0.84; % negative
-c_lBa = -0.005; % negative
+c_lda = -0.005; % negative
 c_m0 = 0.1; 
-c_mA = -0.72;
+c_ma = -0.72;
 c_mq = -1.49; % negative
 c_nr = -0.27; % negative
-c_nBa = 0.0115; % positive
+c_nda = 0.0115; % positive
 
 c_Dpd = 3.2; % payload drag coefficient
 
-cL = [c_L0; c_LA; c_LBs]; % lift force coefficients
-cD = [c_D0; c_DA2; c_DBs]; % drag force coefficients
-cM = [c_lp; c_lBa; c_m0; c_mA; c_mq; c_nr; c_nBa]; % moment coefficients
+cL = [c_L0; c_La; c_Lds]; % lift force coefficients
+cD = [c_D0; c_Da2; c_Dds]; % drag force coefficients
+cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Initiation
 init_pos_in_inertial_frame = [200, -200, -300]; % x-North, z-down, y-East
@@ -87,8 +90,8 @@ init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
 sampling_T = 0.2;
-row_pitch_accu = 0.2; % [degree]
-yaw_accu = 1; % [degree]
+row_pitch_accu = 0.1; % [degree]
+yaw_accu = 0.5; % [degree]
 pos_accu = 0.5; % [m]
 vel_accu = 0.05; % [m/s]
 acc_accu = 0.5; % [m/s^2]
@@ -101,20 +104,17 @@ mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
 wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
-wind_est_noise_var = 0.01*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
-
-%% Wind Predictor
+wind_est_noise_var = 2*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 wind_err0 = zeros(4,50);
-normalize_const = 100; % [m]
-sigma_n = [0.05, 0.05, 0.05]; % sigma_nx, ny, nz;
-Sigma_p = [diag([0.1, 1, 0.01]), diag([0.1, 1, 0.01]), diag([1, 0.01, 0.01])]; % Sigma_px, py, pz
 
 %% Guidance
-z_dot = 1.39; % descending rate without wind [m/s]
-psi_dot_max = 0.2187; % maximum turning angular vel without wind [rad/s]
-xy_dot = 4.59; % horizontal vel without wind [m/s]
-psi_desire = pi;
-
+guidance_horizon_N = 2000; % should not exceed 1000
+guidance0 = zeros(5, guidance_horizon_N); % [x, y, h, psi, psi_dot]
+Vz = 1.39; % descending rate without wind [m/s]
+psi_dot_m = 0.2187; % maximum turning angular vel without wind [rad/s]
+Vh = 4.59; % horizontal vel without wind [m/s]
+psi_d = pi;
+guidance_pd_ctrl_T = 0.1; % [s]
 %% MPC Tracker
 time_horizon_N = 100; % should not exceed 1000
 control0 = zeros(2, time_horizon_N);
