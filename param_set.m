@@ -55,7 +55,6 @@ B_r_BW = [0; 0; 0.1];
 [Im, Ii] = ImIiCompute(parafoil_arc_h, parafoil_ref_span, ...
                        parafoil_ref_length, parafoil_thickness);
 
-
 %% Aero Coefficients
 %--- from paper 12 and book ch5
 c_L0 = 0.24; % lift force coefficient
@@ -105,7 +104,7 @@ sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
 wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
 wind_est_noise_var = 2*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
-wind_err0 = zeros(4,50);
+wind_err0 = zeros(4,15);
 
 %% Guidance
 guidance_horizon_N = 2000; % should not exceed 1000
@@ -114,10 +113,12 @@ Vz = 1.39; % descending rate without wind [m/s]
 psi_dot_m = 0.2187; % maximum turning angular vel without wind [rad/s]
 Vh = 4.59; % horizontal vel without wind [m/s]
 psi_d = pi;
-guidance_pd_ctrl_T = 0.1; % [s]
-%% MPC Tracker
+pd_ctrler_T = 0.1; % [s]
+
+%% MPCC Tracker
 time_horizon_N = 100; % should not exceed 1000
-control0 = zeros(2, time_horizon_N);
+mpc_samping_T = 0.1; % [s]
+control0 = zeros(3, time_horizon_N);
 
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
@@ -126,3 +127,5 @@ aeroF_co_mu0 = [0 0 0;
                 3 3 3]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
 aeroF_co_sigma0 = 0.01*[diag([1,1,1,1]), diag([1,1,1,1]), diag([1,1,1,1])];
 aeroF_est_noise_var = 0.0005*eye(3);
+
+warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % mpcc
