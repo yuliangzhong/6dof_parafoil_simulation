@@ -6,29 +6,31 @@ Vz = sys_param(2);
 psi_dot_m = sys_param(3);
 um = psi_dot_m;
 Au = [1, 0; -1, 0; 0, 1; 0, -1];
-bu = [um; um; 2*Vz; 0];
+bu = [um; um; 2*Vz; -0.0*Vz];
 
 [~, id] = min(vecnorm(guidance(1:2,:) - init_cond(1:2)*ones(1,2000)));
 hr = guidance(3,id);
 e_h = init_cond(3) - hr;
 
 %% fitting --> fx, fy, wx, wy
-ids = max(id - 50, 1);
-idn = min(id+2*N, 2000);
+h_end = guidance(3,end);
+ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-5,2*N),'linear','extrap');
+      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-5,2*N),'linear','extrap');
+      linspace(h_end,h_end-5,2*N);
+      zeros(2,2*N)];
+big_guidance = [guidance,ge];
+ids = id;
+idn = id+2*N;
 
 % fx
-px = polyfit(guidance(3,ids:idn), guidance(1,ids:idn), 7);
+px = polyfit(big_guidance(3,ids:idn), big_guidance(1,ids:idn), 7);
 fx = @(x) px*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 dfx = @(x) px*[7*x.^6; 6*x.^5; 5*x.^4; 4*x.^3; 3*x.^2; 2*x; ones(1,size(x,2)); zeros(1,size(x,2))];
 
 % fy
-py = polyfit(guidance(3,ids:idn), guidance(2,ids:idn), 7);
+py = polyfit(big_guidance(3,ids:idn), big_guidance(2,ids:idn), 7);
 fy = @(x) py*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 dfy = @(x) py*[7*x.^6; 6*x.^5; 5*x.^4; 4*x.^3; 3*x.^2; 2*x; ones(1,size(x,2)); zeros(1,size(x,2))];
-
-% 
-ppsi = polyfit(guidance(3,ids:idn), guidance(4,ids:idn), 7);
-fpsi = @(x) ppsi*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 
 % wx
 pwx = polyfit(heights, wind_profile_hat(1,:), 7);
@@ -40,10 +42,10 @@ wy = @(x) pwy*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 %% MPC formulation
 
 % P = diag([100,100,10000]);
-Q = diag([1000, 1000]);
-R = diag([1000, 1000]);
-q_eta = 100;
-q_u = 1000;
+Q = diag([10000, 10000]);
+R = diag([10000, 1000]);
+q_eta = 500;
+q_u = 10000;
 
 Prob = casadi.Opti();
 % --- define optimization variables ---
@@ -99,7 +101,7 @@ else
 end
 
 %% plot
-% scatter(fy(xs(5,:)), fx(xs(5,:)) ,'g')
+scatter(fy(xs(5,:)), fx(xs(5,:)) ,'g')
 plot(xs(2,:),xs(1,:), 'b')
 
 end

@@ -99,6 +99,7 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
                                       % about [2.3deg, 2.3deg, 0.05m/s]
 
 %% Wind Estimator
+% period  = 0.3 [s]
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
@@ -118,7 +119,7 @@ pd_ctrler_T = 0.1; % [s]
 %% MPCC Tracker
 time_horizon_N = 100; % should not exceed 1000
 mpc_samping_T = 0.1; % [s]
-control0 = zeros(3, time_horizon_N);
+control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
 
 %% Aerodynamic Coefficients Estimator
 aeroF_co_mu0 = [0 0 0; 
