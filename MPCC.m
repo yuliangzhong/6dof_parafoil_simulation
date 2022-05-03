@@ -1,4 +1,4 @@
-function [flag, xs, us, e_h] = MPCC(N, Ts, sys_param, init_cond, wind_err, guidance, heights, wind_profile_hat)
+function [flag, xs, us, hr] = MPCC(N, Ts, sys_param, init_cond, wind_err, guidance, heights, wind_profile_hat)
 
 %% Params
 Vh = sys_param(1);
@@ -8,14 +8,13 @@ um = psi_dot_m;
 Au = [1, 0; -1, 0; 0, 1; 0, -1];
 bu = [um; um; 2*Vz; -0.0*Vz];
 
-[~, id] = min(vecnorm(guidance(1:2,:) - init_cond(1:2)*ones(1,2000)));
+[~, id] = min(vecnorm(guidance(1:2,:) - init_cond(1:2)*ones(1,size(guidance,2))));
 hr = guidance(3,id);
-e_h = init_cond(3) - hr;
 
 %% fitting --> fx, fy, wx, wy
 h_end = guidance(3,end);
-ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-5,2*N),'linear','extrap');
-      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-5,2*N),'linear','extrap');
+ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-50,2*N),'linear','extrap');
+      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-50,2*N),'linear','extrap');
       linspace(h_end,h_end-5,2*N);
       zeros(2,2*N)];
 big_guidance = [guidance,ge];

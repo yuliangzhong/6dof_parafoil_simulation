@@ -111,9 +111,10 @@ wind_err0 = zeros(4,15);
 guidance_horizon_N = 2000; % should not exceed 1000
 guidance0 = zeros(5, guidance_horizon_N); % [x, y, h, psi, psi_dot]
 Vz = 1.39; % descending rate without wind [m/s]
-psi_dot_m = 0.2187; % maximum turning angular vel without wind [rad/s]
 Vh = 4.59; % horizontal vel without wind [m/s]
+psi_dot_m = 0.2187; % maximum turning angular vel without wind [rad/s]
 psi_d = pi;
+guidance_info0 = [0; Vz/Vh]; % [h, lambda]
 pd_ctrler_T = 0.1; % [s]
 
 %% MPCC Tracker
