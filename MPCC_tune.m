@@ -19,4 +19,4 @@ psi0 = atan2(C_IB(2,1), C_IB(1,1));
 init_cond = [x0; y0; h0; psi0];
 
 
-[flag, xs, us, e_h] = MPCC(NN, TTs, sys_param, init_cond, wind_error, guidance, heights, wind_profile_hat)
+[flag, xs, us] = MPCC(NN, TTs, sys_param, init_cond, wind_error, guidance, heights, wind_profile_hat)

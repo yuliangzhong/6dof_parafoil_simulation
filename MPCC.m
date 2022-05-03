@@ -1,4 +1,4 @@
-function [flag, xs, us, hr] = MPCC(N, Ts, sys_param, init_cond, wind_err, guidance, heights, wind_profile_hat)
+function [flag, xs, us] = MPCC(N, Ts, sys_param, init_cond, wind_err, guidance, heights, wind_profile_hat)
 
 %% Params
 Vh = sys_param(1);
@@ -13,12 +13,13 @@ hr = guidance(3,id);
 
 %% fitting --> fx, fy, wx, wy
 h_end = guidance(3,end);
-ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-50,2*N),'linear','extrap');
-      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-50,2*N),'linear','extrap');
+ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-20,2*N),'linear','extrap');
+      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-20,2*N),'linear','extrap');
       linspace(h_end,h_end-5,2*N);
       zeros(2,2*N)];
 big_guidance = [guidance,ge];
-ids = id;
+
+ids = max(id-50,1);
 idn = id+2*N;
 
 % fx
@@ -40,7 +41,7 @@ wy = @(x) pwy*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 
 %% MPC formulation
 
-% P = diag([100,100,10000]);
+P = diag([10000, 10000]);
 Q = diag([10000, 10000]);
 R = diag([10000, 1000]);
 q_eta = 500;
@@ -70,7 +71,7 @@ gamma = atan2(-dfy(X(5,N+1)), -dfx(X(5,N+1))); % since eta is decreasing!
 es_l = -cos(gamma)*(X(1,N+1) - fx(X(5,N+1))) - sin(gamma)*(X(2,N+1) - fy(X(5,N+1)));
 es_c = sin(gamma)*(X(1,N+1) - fx(X(5,N+1))) - cos(gamma)*(X(2,N+1) - fy(X(5,N+1)));
 
-objective = objective + [es_c, es_l]* Q * [es_c, es_l]';
+objective = objective + [es_c, es_l]* P * [es_c, es_l]';
 Prob.minimize(objective)
 
 % --- define constraints ---
