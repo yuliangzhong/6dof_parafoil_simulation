@@ -2,14 +2,11 @@
 
 % Use fminsearch to find p_0_star that yields x(T) = x_T
 global init_cond;
-init_cond = [500, -500, 3*pi/4];
+init_cond = [400, -400, pi/2];
 global psi_d 
 psi_d = pi;
 
-global lambda;
-lambda = 1e-8;
-
-[p_0_star, residual, flag, output] = fminsearch(@(P0) ComputeErr(P0),[0,0,0],optimset('TolFun',1e-7,'TolX',1e-7,'MaxFunEvals',1e5,'MaxIter',1e5));
+[p_0_star, residual, flag, output] = fminsearch(@(P0) ComputeErr(P0),[-1e-5,1e-5,1e-4],optimset('TolFun',1e-7,'TolX',1e-7,'MaxFunEvals',1e5,'MaxIter',1e5));
 disp('-------------')
 disp(flag)
 disp(residual)
@@ -24,11 +21,10 @@ x0 = [init_cond(1);
 [time, traj] = ode45(@(t,x) ODEdyn(t,x), t_span, x0);
 err_f = [traj(end,1); traj(end,2); cos(traj(end,3) - psi_d)];
 disp(err_f)
-plot(traj(:,2), traj(:,1))
+plot(traj(:,1), traj(:,2))
 
 
 function dxdt = ODEdyn(t, x) % x = [x, y, psi, p1, p2, p3]^T
-    global lambda
     V0 = 4.6;
     um = 0.2;
 
@@ -42,8 +38,8 @@ function dxdt = ODEdyn(t, x) % x = [x, y, psi, p1, p2, p3]^T
     dxdt = [V0*cos(x(3));
             V0*sin(x(3));
             u;
-            -2*lambda*x(1);
-            -2*lambda*x(2);
+            0;
+            0;
             x(4)*V0*sin(x(3)) - x(5)*V0*cos(x(3))];
 end
 
@@ -58,5 +54,5 @@ function err = ComputeErr(P0)
           P0(2);
           P0(3)];
     [~, traj] = ode45(@(t,x) ODEdyn(t,x), t_span, x0);
-    err = sqrt(traj(end,1)^2 + traj(end,2)^2) - 1e2*((cos(traj(end,3) - psi_d) -1));
+    err = sqrt(traj(end,1)^2 + traj(end,2)^2) - 200*((cos(traj(end,3) - psi_d) -1));
 end

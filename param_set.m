@@ -83,7 +83,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Initiation
 init_pos_in_inertial_frame = [200, -200, -300]; % x-North, z-down, y-East
-init_rpy = [0,      0.02,  pi/2]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_rpy = [0,      0.02,  pi*3/4]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
 
