@@ -13,8 +13,8 @@ hr = guidance(3,id);
 
 %% fitting --> fx, fy, wx, wy
 h_end = guidance(3,end);
-ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-20,2*N),'linear','extrap');
-      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-20,2*N),'linear','extrap');
+ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-1,2*N),'linear','extrap');
+      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-1,2*N),'linear','extrap');
       linspace(h_end,h_end-5,2*N);
       zeros(2,2*N)];
 big_guidance = [guidance,ge];
@@ -101,6 +101,8 @@ else
 end
 
 %% plot
+hold on
+grid on
 scatter(fy(xs(5,:)), fx(xs(5,:)) ,'g')
 plot(xs(2,:),xs(1,:), 'b')
 
