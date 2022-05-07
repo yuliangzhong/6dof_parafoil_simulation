@@ -1,7 +1,20 @@
 % SCP Guidance
-% clear all;
-% clc;
-% W = np.array([[17.96208853,17.56368787,20.61838065,25.18334004,22.52074534,26.77293274,25.57287022,20.51386757,18.42710807,21.36785401,18.12489511,14.94887125, 12.87491946, 13.09745288,  7.21907596, -1.459937 ,   7.740678 ,  10.37488769,  4.48765114  ,5.46872134, -1.68147061 , 4.22306641, 17.8954532  , 2.58745642, 1.11793932, -3.81641426, -3.75646  ,  -2.45822383 ,-0.22924514, -2.24006629],[-11.14862732 ,-13.8301893 , -17.73220257,  -8.10191481 , -2.33771849,  -0.71133681  , 7.3276312  ,  2.85030499 , -2.26370296 , -2.01329856,  -3.88281926 , -0.60767267,  -3.66318881 , -3.93941925,  -1.41578766,   8.08154894 , 10.92129449  , 6.36317964,   6.27415534,  -6.86086859,  -4.49156021  ,-6.23473274 , -7.2650244 ,   0.06751707  ,-7.68552073,  -4.35247244  , 0.49549029 , -4.15317153 , -0.96148253 , -2.29360969]])
+clear all;
+clc;
+
+%% Wind Profile, Pos Compensation and Wind Gust Dynamics
+vel_at6m = 1.5; % wind velocity at 6m, absolute value
+theta = 120; % [deg] constant
+
+wind_h = @(h) (h>0.04572)*vel_at6m.*log(h/0.04572)/log(6.096/0.04572); % wind shear model
+theta_h = @(h) theta/180*pi + pi; % forcasted wind field
+GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
+                       wind_h(h).*sin(theta_h(h));
+                       zeros(1,size(h,2))]; % [wx; wy; 0];
+wind_pf_size = 7000;
+heights = linspace(1e-6, 350, wind_pf_size); % start from 0+ avoiding NaN
+wind_profile_hat = GetWindProfile(heights);
+
 %% mission independent params
 ch = 1.225;
 cz = 2.256e-5;
@@ -30,6 +43,7 @@ hs = h(Time);
 Vhs = Vh(hs);
 u0 = [Vh0*cos(psi_0-psi_d);
       Vh0*sin(psi_0-psi_d)];
+u_bar0 = u0*ones(1,N+1);
 W = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
      interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
@@ -50,9 +64,6 @@ u = sdpvar(2,N+1);
 u_bar = sdpvar(2,N+1);
 eps_h = sdpvar(1);
 
-% u_init = np.array([v*np.cos(psi_0),v*np.sin(psi_0)])
-% u_bar.value = np.divide(u_init,np.linalg.norm(u_init, axis=0))
-
 cost = 0;
 constraints = [eps_h >= 0, ...
                x(:,1) == [x0;y0], ...
@@ -70,21 +81,24 @@ end
 objective = lambda1*norm(x(:,end)) + lambda2*(1-u(1,end)/Vhs(end)) + lambda3*cost;
 
 MAX_ITER = 50;
-options = sdpsettings('verbose',1,'debug',1,'solver','quadprog','quadprog.maxiter',100);
-P = optimizer(constraints,objective,options,u_bar,[x,u,eps_h]);
 
-% 
-% it_final_position = np.empty((MAX_ITER))
-% it_final_angle=np.empty((MAX_ITER))
-% it_control_cost =np.empty((MAX_ITER))
-% it_cost =np.empty((MAX_ITER))
-% X = np.empty((2,N,MAX_ITER))
-% U = np.empty((2,N,MAX_ITER))
-% D = np.empty((N-1,MAX_ITER))
+%% Verification & Visualization
+
+it_final_position = zeros(1,MAX_ITER);
+it_final_angle = zeros(1,MAX_ITER);
+it_control_cost = zeros(1,MAX_ITER);
+it_cost = zeros(1,MAX_ITER);
+X = zeros(2*MAX_ITER,N);
+U = zeros(2*MAX_ITER,N);
+D = zeros(2*MAX_ITER,N-1);
 % 
 % problem = cvx.Problem(cvx.Minimize(cost), const + [eps_h ==0.1])
 % first_stage_converged = False
-% 
+% sdpsettings('solver', 'ecos');
+
+options = sdpsettings('verbose',0,'debug',1,'solver', 'ecos'); % It's using FMINCON-STANDARD. should be 'ecos'
+stage1 = optimizer([constraints, eps_h==eps_h_val],objective,options,u_bar,{x,u,eps_h});
+
 % print('Iteration number\t Final position\t Final angle\t Control cost\t Total cost') 
 % for i in range(MAX_ITER):
 % 
