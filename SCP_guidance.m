@@ -15,115 +15,97 @@ wind_pf_size = 7000;
 heights = linspace(1e-6, 350, wind_pf_size); % start from 0+ avoiding NaN
 wind_profile_hat = GetWindProfile(heights);
 
-%% mission independent params
+%% Parameters
+N = 100;
+psi_dot_m = 0.2187;
+h0 = 262;
+Vh0 = 4.59;
+Vz0 = 1.39;
+x0 = 200;
+y0 = -200;
+psi_0 = pi*2/4;
+psi_d = pi;
+% wind_profile_hat
+% heights
+
+%% Altitude Evolution
+
 ch = 1.225;
 cz = 2.256e-5;
 ce = 4.2559;
 cf = ce/2+1;
+
 rho = @(h) ch*(1-h*cz).^ce;
-N = 30;
-psi_dot_m = 0.2187;
+h = @(t) 1/cz*(ones(1,size(t,2)) - (cz*cf*Vz0*sqrt(rho(h0))/sqrt(ch)*t + (1-cz*h0)^cf*ones(1,size(t,2))).^(1/cf));
+Vh = @(h) Vh0*sqrt(rho(h0)./rho(h));
 
-%% from sensor
-H = 1200;
-x0 = 400;
-y0 = 400;
-psi_0 = 0; % init_cond
-psi_d = pi; % desired
-Vh0 = 18.5; 
-Vz0 = 7.9;
-
-tf = sqrt(ch)/(cz*cf*Vz0*sqrt(rho(H)))*(1-(1-cz*H)^cf);
-h = @(t) 1/cz*(ones(1,size(t,2)) - (cz*cf*Vz0*sqrt(rho(H))/sqrt(ch)*t + (1-cz*H)^cf*ones(1,size(t,2))).^(1/cf));
-Vh = @(h) Vh0*sqrt(rho(H)./rho(h));
-
+tf = sqrt(ch)/(cz*cf*Vz0*sqrt(rho(h0)))*(1-(1-cz*h0)^cf);
 dt = tf/N;
-Time = linspace(0, tf, N+1);
-hs = h(Time);
-Vhs = Vh(hs);
-u0 = [Vh0*cos(psi_0-psi_d);
-      Vh0*sin(psi_0-psi_d)];
-u_bar0 = u0*ones(1,N+1);
-W = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
-     interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
-%% Dyn
-A = eye(2);
-B_m = dt/2*[cos(psi_d), -sin(psi_d);
-            sin(psi_d), cos(psi_d)];
-B_p = B_m;
-eps_h_val = 0.1;
-eps_convergence = 0.01;
+times = linspace(0, tf, N+1);
+hs = h(times);
+Vhs = Vh(hs);
+Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
+      interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
+
+%% Optimization Setup
+
+u0 = [Vh0*cos(psi_0);
+      Vh0*sin(psi_0)];
+u_bar_normalized = u0/norm(u0)*ones(1,N+1);
+
+eps_h = 0.1;
+MAX_ITER = 50;
+current_cost = inf;
+eps_convergence = 0.1;
 lambda1 = 100;
 lambda2 = 10;
 lambda3 = 1;
 
-%% Optimization
-x = sdpvar(2,N+1);
-u = sdpvar(2,N+1);
-u_bar = sdpvar(2,N+1);
-eps_h = sdpvar(1);
+x_star = zeros(2,N+1);
+u_star = zeros(2,N+1);
 
-cost = 0;
-constraints = [eps_h >= 0, ...
-               x(:,1) == [x0;y0], ...
+%% Optimization Stage One
+
+yalmip('clear')
+x = sdpvar(2,N+1); % [x; y]
+u = sdpvar(2,N+1); % [v1; v2]
+cost = lambda1*(x(1,end)^2 + x(2,end)^2) + lambda2 * (1-cos(psi_d)*u(1,end)/Vhs(end) - sin(psi_d)*u(2,end)/Vhs(end));
+constraints = [x(:,1) == [x0;y0], ...
                u(:,1) == u0, ...
-               norm(u(:,N+1)) - Vhs(N+1) <= eps_h ...
-               u_bar(:,N+1)'/norm(u_bar(:,N+1))*u(:,N+1) - Vhs(N+1) >= -eps_h];
-for i = 1 : N
-    constraints = [constraints, x(:,i+1) == A*x(:,i) + B_m*u(:,i) + B_p*u(:,i+1) + dt*W(:,i) ...
-                              , norm(u(:,i+1) - u(:,i))/Vhs(i)/dt <= psi_dot_m ...
-                              , norm(u(:,i)) - Vhs(i) <= eps_h ...
-                              , u_bar(:,i)'/norm(u_bar(:,i))*u(:,i) - Vhs(i) >= -eps_h];
-    cost = cost + (norm(u(:,i+1) - u(:,i))/Vhs(i))^2/dt;
+               norm(u(:,N+1)) <= Vhs(N+1) + eps_h];
+for i = 1:N
+    constraints = [constraints, x(:,i+1) == x(:,i) + dt*[(u(1,i)+u(1,i+1))/2 + (Ws(1,i)+Ws(1,i+1))/2;
+                                                         (u(2,i)+u(2,i+1))/2 + (Ws(2,i)+Ws(2,i+1))/2] ...
+                              , norm(u(:,i)) <= Vhs(i) + eps_h ...
+                              , norm(u(:,i+1) - u(:,i))/Vhs(i)/dt <= psi_dot_m];
+    cost = cost + lambda3*norm(u(:,i+1) - u(:,i))^2/Vhs(i)^2/dt;
 end
+options = sdpsettings('verbose',0,'solver','ecos');
 
-objective = lambda1*norm(x(:,end)) + lambda2*(1-u(1,end)/Vhs(end)) + lambda3*cost;
+for n = 1:MAX_ITER
+    disp("At iteration "+num2str(n)+", current cost: "+num2str(current_cost))
 
-MAX_ITER = 50;
-
-%% Verification & Visualization
-
-it_final_position = zeros(1,MAX_ITER);
-it_final_angle = zeros(1,MAX_ITER);
-it_control_cost = zeros(1,MAX_ITER);
-it_cost = zeros(1,MAX_ITER);
-X = zeros(2*MAX_ITER,N);
-U = zeros(2*MAX_ITER,N);
-D = zeros(2*MAX_ITER,N-1);
-% 
-% problem = cvx.Problem(cvx.Minimize(cost), const + [eps_h ==0.1])
-% first_stage_converged = False
-% sdpsettings('solver', 'ecos');
-
-options = sdpsettings('verbose',0,'debug',1,'solver', 'ecos'); % It's using FMINCON-STANDARD. should be 'ecos'
-stage1 = optimizer([constraints, eps_h==eps_h_val],objective,options,u_bar,{x,u,eps_h});
-
-% print('Iteration number\t Final position\t Final angle\t Control cost\t Total cost') 
-% for i in range(MAX_ITER):
-% 
-%     s = problem.solve(solver=cvx.ECOS, verbose=True, warm_start=True)
-%     u_bar.value = np.divide(u.value,np.linalg.norm(u.value, axis=0))
-% 
-%     x_star = x.value
-%     u_star = u.value
-%     
-%     X[:,:,i] = x_star
-%     U[:,:,i] = u_star
-%     
-%     it_final_position[i] = final_position.value
-%     it_final_angle[i] = final_angle.value
-%     it_control_cost[i] = control_cost.value
-%     it_cost[i] = cost.value
-% 
-%     print(str(i)+'\t'+'\t'+'\t'+"%10.3E" %it_final_position[i]+'\t'+"%10.3E" %it_final_angle[i]+'\t'+"%10.3E" %it_control_cost[i]+'\t'+"%10.3E" %it_cost[i])
-%     if (np.abs(it_cost[i]-it_cost[i-1]) < eps_convergence) and first_stage_converged:
-%         print("STAGE 2 CONVERGED AFTER " +str(i)+" ITERATIONS")
-%         n_iter = i
-%         break
-%     if (i>1) and (np.abs(it_cost[i]-it_cost[i-1]) < eps_convergence) and not first_stage_converged:
-%         print("STAGE 1 CONVERGED AFTER " +str(i)+" ITERATIONS")
-%         cost = cost+ alpha_3*eps_h
-%         problem = cvx.Problem(cvx.Minimize(cost), const)
-%         first_stage_converged = True
-%         n_iter_first = i
+    Cons = constraints;
+    for i = 1:N+1
+        Cons = [Cons, u_bar_normalized(:,i)'*u(:,i) >= Vhs(i) - eps_h];
+    end
+    sol = optimize(Cons, cost, options);
+    if sol.problem ~= 1
+        if abs(value(cost) - current_cost) < eps_convergence
+            x_star = value(x);
+            u_star = value(u);
+            disp("At iteration "+num2str(n)+", final cost: "+num2str(value(cost)))
+            break
+        else
+            current_cost = value(cost);
+            for j = 1:N+1
+                u_sol = value(u);
+                u_bar_normalized(:,j) = u_sol(:,j)/norm(u_sol(:,j));
+            end
+        end
+    else
+        disp("Something went wrong at iteration "+num2str(n));
+        disp(sol.info)
+    end
+end 
