@@ -83,12 +83,12 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Initiation
 init_pos_in_inertial_frame = [200, -200, -300]; % x-North, z-down, y-East
-init_rpy = [0,      0.02,  pi*3/4]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_rpy = [0,      0.02,  pi*2/4]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.56,   0,  1.49]; % velocity in body frame
 init_pqr = [0,  0,  0]; % angular velocity in body frame
 
 %% Observer accuracy(accu)
-sampling_T = 0.2;
+sampling_T = 0.15;
 row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
 pos_accu = 0.5; % [m]
@@ -99,16 +99,16 @@ airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
                                       % about [2.3deg, 2.3deg, 0.05m/s]
 
 %% Wind Estimator
-% period  = 0.3 [s]
+% period  = sampling_T!!! [s]
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
 w_bar_hat0 = mu0;
 wind_est_dyn_var = 1.01 * sampling_T^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
-wind_est_noise_var = 2*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
+wind_est_noise_var = 3*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 wind_err0 = zeros(4,15);
 
 %% Guidance
-guidance_horizon_N = 2000; % should not exceed 1000
+guidance_horizon_N = 2000;
 guidance0 = zeros(5, guidance_horizon_N); % [x, y, h, psi, psi_dot]
 Vz = 1.39; % descending rate without wind [m/s]
 Vh = 4.59; % horizontal vel without wind [m/s]
