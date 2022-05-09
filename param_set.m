@@ -114,7 +114,7 @@ Vz = 1.39; % descending rate without wind [m/s]
 Vh = 4.59; % horizontal vel without wind [m/s]
 psi_dot_m = 0.2187; % maximum turning angular vel without wind [rad/s]
 psi_d = pi;
-guidance_info0 = [0; Vz/Vh]; % [h, kappa]
+guidance_info0 = [-init_pos_in_inertial_frame(3); Vz/Vh]; % [h, kappa]
 pd_ctrler_T = 0.1; % [s]
 
 %% MPCC Tracker
