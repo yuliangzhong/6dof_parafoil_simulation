@@ -1,22 +1,8 @@
-x = sdpvar(1);
-y = sdpvar(1);
+N = 100;
+sys_param = [4.59, 1.39, 0.2187];
+init_cond = [200, -200, 300, pi/2];
+psi_d = pi;
+psi_dot0 = 0;
 
-a = sqrt(2);
-% Define constraints 
-% Contraints = boolean(zeros(1,2));
-% Constraints(1,1) = norm([x,y])<=a;
-% Constraints(1,2) = norm([x,y])>=0.1;
-Constraints = [norm([x,y])<=a];%, norm([x,y])>=0.1];
 
-Objective = x+y;
-
-% Set some options for YALMIP and solver
-options = sdpsettings('verbose',0,'solver','ecos');
-
-% Solve the problem
-sol = optimize(Constraints,Objective,options);
-value(Objective)
-
-% for i = 1:1
-%     disp("haha")
-% end
+[flag, guidance] = GuidanceSolve(N, sys_param, init_cond, psi_d, psi_dot0, heights, wind_profile_hat)

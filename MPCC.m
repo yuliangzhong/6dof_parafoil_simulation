@@ -1,5 +1,4 @@
 function [flag, xs, us] = MPCC(N, Ts, sys_param, init_cond, wind_err, guidance, heights, wind_profile_hat)
-
 %% Params
 Vh = sys_param(1);
 Vz = sys_param(2);
