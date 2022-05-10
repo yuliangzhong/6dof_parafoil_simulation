@@ -1,13 +1,14 @@
 % solving guidance by casadi + ipopt
 
-function [flag, guidance] = GuidanceSolve(N, vel_info, psi_dot_m, init_cond, psi_d, psi_dot0, heights, wind_profile_hat, wind_dis)
+function [flag, guidance] = GuidanceSolve(N, vel_info, psi_dot_m, init_cond, psi_d, psi_dot0, heights, wind_profile_hat)
+
+tic
+
 %% Parameters Reading
 x0 = init_cond(1);
 y0 = init_cond(2);
 h0 = init_cond(3);
 psi_0 = init_cond(4);
-dx = wind_dis(1);
-dy = wind_dis(2);
 
 %% Altitude Evolution
 ch = 1.225;
@@ -29,8 +30,8 @@ dt = tf/(N-1);
 times = linspace(0, tf, N);
 hs = h(times);
 Vhs = Vh(hs);
-Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'spline','extrap');
-      interp1(heights, wind_profile_hat(2,:), hs, 'spline','extrap')];
+Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
+      interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
 %% Optimization
 lambda1 = 100;
@@ -50,8 +51,8 @@ Prob.subject_to(x(:,1) == [x0; y0; psi_0]);
 Prob.subject_to(u(1) == psi_dot0);
 
 for i = 1:N-1
-    Prob.subject_to(x(:,i+1) == x(:,i) + dt*[(Vhs(i)*cos(x(3,i))+Vhs(i+1)*cos(x(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2 + dx;
-                                             (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2 + dy;
+    Prob.subject_to(x(:,i+1) == x(:,i) + dt*[(Vhs(i)*cos(x(3,i))+Vhs(i+1)*cos(x(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
+                                             (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
                                              u(i)]);
     cost = cost + lambda3*u(i)^2*dt + (u(i+1) - u(i))^2/dt;
     Prob.subject_to(Au*u(i) <= bu);
@@ -75,6 +76,9 @@ if flag
 else
     disp("ERROR! Guidance solver failed!!")
 end
+
+toc
+text(init_cond(2), init_cond(1), num2str(toc))
 
 end
 

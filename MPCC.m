@@ -1,4 +1,7 @@
 function [flag, control] = MPCC(N, Ts, vel_info, psi_dot_m, init_cond, guidance, heights, wind_profile_hat, wind_dis)
+
+tic
+
 %% Parameters Reading
 ch = 1.225;
 cz = 2.256e-5;
@@ -13,12 +16,16 @@ um = psi_dot_m;
 Au = [1, 0; -1, 0; 0, 1; 0, -1];
 bu = [um; um; 2*Vz; -0.0*Vz];
 
-% interpolate guidance & wind profile in [h+5, h-30]
-h_max = h0+5; h_min = max(-10,h0-30);
+% interpolate guidance & wind profile
+h_max = h0+50; h_min = max(-1 ,h0-30);
 extrap_heights_num = 1000;
 interp_heights = linspace(h_max, h_min, extrap_heights_num);
-interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, 'spline', 'extrap');
-                   interp1(guidance(3,:), guidance(2,:), interp_heights, 'spline', 'extrap');
+interp_method = 'spline';
+if h0 < 20
+    interp_method = 'linear';
+end
+interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, interp_method, 'extrap');
+                   interp1(guidance(3,:), guidance(2,:), interp_heights, interp_method, 'extrap');
                    interp_heights];
 interp_wind_pf = [interp1(heights, wind_profile_hat(1,:), interp_heights, 'linear', 'extrap');
                   interp1(heights, wind_profile_hat(2,:), interp_heights, 'linear', 'extrap')];
@@ -110,11 +117,13 @@ end
 %% plot
 hold on
 grid on
-scatter(fy(xs(5,:)), fx(xs(5,:)) ,'g')
+scatter(fy(xs(5,:)), fx(xs(5,:)) , 'g')
 plot(xs(2,:),xs(1,:), 'b','LineWidth',1)
 % scatter(xs(2,:),xs(1,:),'b')
 % scatter(guidance(2,:), guidance(1,:), 'm')
 % plot(interp_guidance(2,:), interp_guidance(1,:),'k')
 % scatter(init_cond(2), init_cond(1),'b','filled')
 
+toc
+text(init_cond(2)+30, init_cond(1), num2str(toc))
 end
