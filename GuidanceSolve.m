@@ -1,14 +1,13 @@
 % solving guidance by casadi + ipopt
 
-function [flag, guidance] = GuidanceSolve(N, sys_param, init_cond, psi_d, psi_dot0, heights, wind_profile_hat)
+function [flag, guidance] = GuidanceSolve(N, vel_info, psi_dot_m, init_cond, psi_d, psi_dot0, heights, wind_profile_hat, wind_dis)
 %% Parameters Reading
-Vh0 = sys_param(1);
-Vz0 = sys_param(2);
-psi_dot_m = sys_param(3);
 x0 = init_cond(1);
 y0 = init_cond(2);
 h0 = init_cond(3);
 psi_0 = init_cond(4);
+dx = wind_dis(1);
+dy = wind_dis(2);
 
 %% Altitude Evolution
 ch = 1.225;
@@ -18,6 +17,8 @@ cf = ce/2+1;
 
 % functions
 rho = @(h) ch*(1-h*cz).^ce;
+Vh0 = sqrt(rho(vel_info(1))*vel_info(2)^2/rho(h0));
+Vz0 = sqrt(rho(vel_info(1))*vel_info(3)^2/rho(h0));
 h = @(t) 1/cz*(ones(1,size(t,2)) - (cz*cf*Vz0*sqrt(rho(h0))/sqrt(ch)*t + (1-cz*h0)^cf*ones(1,size(t,2))).^(1/cf));
 Vh = @(h) Vh0*sqrt(rho(h0)./rho(h));
 
@@ -34,7 +35,7 @@ Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'spline','extrap');
 %% Optimization
 lambda1 = 100;
 lambda2 = 100;
-lambda3 = 0.1;
+lambda3 = 0.001;
 
 Au = [1; -1];
 bu = [psi_dot_m; psi_dot_m];
@@ -49,10 +50,10 @@ Prob.subject_to(x(:,1) == [x0; y0; psi_0]);
 Prob.subject_to(u(1) == psi_dot0);
 
 for i = 1:N-1
-    Prob.subject_to(x(:,i+1) == x(:,i) + dt*[(Vhs(i)*cos(x(3,i))+Vhs(i+1)*cos(x(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
-                                             (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
+    Prob.subject_to(x(:,i+1) == x(:,i) + dt*[(Vhs(i)*cos(x(3,i))+Vhs(i+1)*cos(x(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2 + dx;
+                                             (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2 + dy;
                                              u(i)]);
-    cost = cost + lambda3*(i/N)^2*u(i)^2*dt + (u(i+1) - u(i))^2/dt;
+    cost = cost + lambda3*u(i)^2*dt + (u(i+1) - u(i))^2/dt;
     Prob.subject_to(Au*u(i) <= bu);
 end
 Prob.subject_to(Au*u(N) <= bu);

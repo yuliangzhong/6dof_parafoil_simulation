@@ -1,42 +1,48 @@
-function [flag, xs, us] = MPCC(N, Ts, sys_param, init_cond, wind_err, guidance, heights, wind_profile_hat)
-%% Params
-Vh = sys_param(1);
-Vz = sys_param(2);
-psi_dot_m = sys_param(3);
+function [flag, control] = MPCC(N, Ts, vel_info, psi_dot_m, init_cond, guidance, heights, wind_profile_hat, wind_dis)
+%% Parameters Reading
+ch = 1.225;
+cz = 2.256e-5;
+ce = 4.2559;
+
+% functions
+h0 = init_cond(3);
+rho = @(h) ch*(1-h*cz).^ce; % air density model
+Vh = sqrt(rho(vel_info(1))*vel_info(2)^2/rho(h0)); % xy-vel no wind at current height
+Vz = sqrt(rho(vel_info(1))*vel_info(3)^2/rho(h0)); % z-vel no wind at current height
 um = psi_dot_m;
 Au = [1, 0; -1, 0; 0, 1; 0, -1];
 bu = [um; um; 2*Vz; -0.0*Vz];
 
-[~, id] = min(vecnorm(guidance(1:2,:) - init_cond(1:2)*ones(1,size(guidance,2))));
-hr = guidance(3,id);
+% interpolate guidance & wind profile in [h+5, h-30]
+h_max = h0+5; h_min = max(-10,h0-30);
+extrap_heights_num = 1000;
+interp_heights = linspace(h_max, h_min, extrap_heights_num);
+interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, 'spline', 'extrap');
+                   interp1(guidance(3,:), guidance(2,:), interp_heights, 'spline', 'extrap');
+                   interp_heights];
+interp_wind_pf = [interp1(heights, wind_profile_hat(1,:), interp_heights, 'linear', 'extrap');
+                  interp1(heights, wind_profile_hat(2,:), interp_heights, 'linear', 'extrap')];
+[~, id] = min(vecnorm(interp_guidance(1:2,:) - init_cond(1:2)*ones(1,size(interp_guidance,2))));
+hr = interp_guidance(3,id);
 
 %% fitting --> fx, fy, wx, wy
-h_end = guidance(3,end);
-ge = [interp1(guidance(3,:),guidance(1,:),linspace(h_end,h_end-1,2*N),'linear','extrap');
-      interp1(guidance(3,:),guidance(2,:),linspace(h_end,h_end-1,2*N),'linear','extrap');
-      linspace(h_end,h_end-5,2*N);
-      zeros(2,2*N)];
-big_guidance = [guidance,ge];
-
-ids = max(id-50,1);
-idn = id+2*N;
 
 % fx
-px = polyfit(big_guidance(3,ids:idn), big_guidance(1,ids:idn), 7);
-fx = @(x) px*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
-dfx = @(x) px*[7*x.^6; 6*x.^5; 5*x.^4; 4*x.^3; 3*x.^2; 2*x; ones(1,size(x,2)); zeros(1,size(x,2))];
+px = polyfit(interp_guidance(3,:), interp_guidance(1,:), 5);
+fx = @(x) px*[x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
+dfx = @(x) px*[5*x.^4; 4*x.^3; 3*x.^2; 2*x; ones(1,size(x,2)); zeros(1,size(x,2))];
 
 % fy
-py = polyfit(big_guidance(3,ids:idn), big_guidance(2,ids:idn), 7);
-fy = @(x) py*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
-dfy = @(x) py*[7*x.^6; 6*x.^5; 5*x.^4; 4*x.^3; 3*x.^2; 2*x; ones(1,size(x,2)); zeros(1,size(x,2))];
+py = polyfit(interp_guidance(3,:), interp_guidance(2,:), 5);
+fy = @(x) py*[x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
+dfy = @(x) py*[5*x.^4; 4*x.^3; 3*x.^2; 2*x; ones(1,size(x,2)); zeros(1,size(x,2))];
 
 % wx
-pwx = polyfit(heights, wind_profile_hat(1,:), 7);
-wx = @(x) pwx*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
+pwx = polyfit(interp_heights, interp_wind_pf(1,:), 5);
+wx = @(x) pwx*[x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 % wy
-pwy = polyfit(heights, wind_profile_hat(2,:), 7);
-wy = @(x) pwy*[x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
+pwy = polyfit(interp_heights, interp_wind_pf(2,:), 5);
+wy = @(x) pwy*[x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 
 %% MPC formulation
 
@@ -75,11 +81,12 @@ Prob.minimize(objective)
 
 % --- define constraints ---
 Prob.subject_to(X(:,1)==[init_cond; hr]);
+
 for i = 1:N
     Prob.subject_to(Au*U(:,i)<=bu);
-    Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh * cos(X(4,i)) + wx(X(3,i)) + wind_err(1);
-                                              Vh * sin(X(4,i)) + wy(X(3,i)) + wind_err(2);
-                                              - (Vz+wind_err(3));
+    Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh * cos(X(4,i)) + wx(X(3,i)) + wind_dis(1);
+                                              Vh * sin(X(4,i)) + wy(X(3,i)) + wind_dis(2);
+                                              - (Vz + wind_dis(3));
                                               U(1,i);
                                               -U(2,i)]);
 end
@@ -93,16 +100,21 @@ flag = sol.stats.success;
 if flag
     xs = sol.value(X);
     us = sol.value(U);
+    control = [xs(3:4,1:N); % h, psi
+               us(1,1:N)] ;  % psi_dot
 else
     disp("MPC Solution not found")
-    xs = zeros(5,N+1);
-    us = zeros(2,N);
+    control = zeros(3,N);
 end
 
 %% plot
 hold on
 grid on
 scatter(fy(xs(5,:)), fx(xs(5,:)) ,'g')
-plot(xs(2,:),xs(1,:), 'b')
+plot(xs(2,:),xs(1,:), 'b','LineWidth',1)
+% scatter(xs(2,:),xs(1,:),'b')
+% scatter(guidance(2,:), guidance(1,:), 'm')
+% plot(interp_guidance(2,:), interp_guidance(1,:),'k')
+% scatter(init_cond(2), init_cond(1),'b','filled')
 
 end

@@ -20,5 +20,4 @@ phi_t = atan2(C_IB(3,2), C_IB(3,3));
 theta_t = atan2(-C_IB(3,1), sqrt(C_IB(3,2)^2) + C_IB(3,3)^2);
 psi_dot_now = B_w_IB(2)*sin(phi_t)/cos(theta_t) + B_w_IB(3)*cos(phi_t)/cos(theta_t);
 
-
-[flag, control] = MPCC(time_horizon_N, mpc_samping_T, vel_info, psi_dot_m, init_cond, psi_dot_now, guidance, heights, wind_profile_hat,wind_dis)
+[flag, guidance] = GuidanceSolve(time_horizon_N, vel_info, psi_dot_m, init_cond, psi_d, psi_dot_now, heights, wind_profile_hat, wind_dis)
