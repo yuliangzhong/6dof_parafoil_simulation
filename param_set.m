@@ -89,19 +89,17 @@ init_rpy = [0; 0; 0/180*pi]; % yaw-pitch-row; from ground to body frame; x-head,
 init_uvw = [4.575; 0; 1.371]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
-%% Sensor Model / Accuracy (accu) after fusion & EKF
-sensor_freq = 20; % [Hz] GPU/INS output frequency after fusion
-vane_freq = 10; % [Hz] airspeed vane frequency
-pitot_freq = 10; % [Hz] pitot tube frequency
-pos_accu = 1; % [m]
+%% Sensor Model: Accuracy after Primary Sensor Fusion
+sensor_freq = 20; % [Hz] sensor data subscriber frequency
+pos_accu = 2; % [m]
+vel_accu = 0.1; % [m/s]
 row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
-vel_accu = 0.1; % [m/s]
-acc_accu = 0.5; % [m/s^2]
-angVel_accu = 0.05; %[deg/s]
-% airspeed_var = [0.001, 0.001, 0.005]; % [alpha, beta, Vb], no unit
-%                                       % about [2.3deg, 2.3deg, 0.05m/s]
+acc_accu = 0.05; % [m/s^2]
+angVel_accu = 0.1; %[deg/s]
+% tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
 
+%% Extended Kalman Filter for States & Winds
 %% Wind Estimator
 % period  = sampling_T!!! [s]
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
