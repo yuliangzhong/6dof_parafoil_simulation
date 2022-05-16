@@ -25,9 +25,9 @@ xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
 
-a_w = -0.0385;
-diag_sigma_zeta = [0.0251, 0.0251, 0.0251]; % diagonal matrix
-% set delta_w sampling time = 0.2s
+a_w = -0.00385;
+b_w = 0.0251;
+sigma_zeta = b_w^2*eye(3); % diagonal matrix
 
 % params from paper 14/16
 
@@ -84,7 +84,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone and Initiation
 [Ax, bx, init_xy_pos] = SafeZoneCompute(0);
-init_pos_in_inertial_frame = [init_xy_pos; -330]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [init_xy_pos; -33]; % x-North, z-down, y-East
 init_rpy = [0; 0; 0/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.575; 0; 1.371]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
@@ -96,17 +96,24 @@ vel_accu = 0.1; % [m/s]
 row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
 acc_accu = 0.05; % [m/s^2]
-angVel_accu = 0.1; %[deg/s]
+angVel_accu = 0.1; % [deg/s]
+airspeed_accu = 1; % [m/s]
 % tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
 
 %% Extended Kalman Filter for States & Winds
+% state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw, wx, wy, wz, delta_wx, delta_wy, delta_wz] 15*1
+EKF_freq = 10; % [Hz]
+mu0 = [init_pos_in_inertial_frame; 0;0;0; init_rpy; GetWindProfile(-init_pos_in_inertial_frame(3)); 0; 0; 0]; % 15*1
+sigma0 = blkdiag(2*eye(3), 3*eye(3), eye(3), eye(3), 0.5*eye(3)); % 15*15
+Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3), sigma_zeta); % 9*9
+R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), diag([row_pitch_accu^2, row_pitch_accu^2, yaw_accu^2]), airspeed_accu^2*eye(3)); % 12*12
 %% Wind Estimator
 % period  = sampling_T!!! [s]
-mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
-sigma0 = eye(3); % wind variance initial guess
-w_bar_hat0 = mu0;
-wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
-wind_est_noise_var = 3*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
+% mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
+% sigma0 = eye(3); % wind variance initial guess
+% w_bar_hat0 = mu0;
+% wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
+% wind_est_noise_var = 3*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 wind_err0 = zeros(4,50);
 
 %% Guidance
