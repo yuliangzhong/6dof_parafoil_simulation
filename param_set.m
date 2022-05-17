@@ -77,7 +77,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone and Initiation
 [Ax, bx, init_xy_pos] = SafeZoneCompute(0);
-init_pos_in_inertial_frame = [init_xy_pos; -33]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [init_xy_pos; -330]; % x-North, z-down, y-East
 init_rpy = [0; 0; 0/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [4.575; 0; 1.371]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
@@ -93,18 +93,19 @@ angVel_accu = 0.1; % [deg/s]
 airspeed_accu = 1; % [m/s]
 % tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
 
-%% Extended Kalman Filter for States & Winds
-% state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw, wx, wy, wz, delta_wx, delta_wy, delta_wz] 15*1
-EKF_freq = 40; % [Hz]
-mu0 = [init_pos_in_inertial_frame; 
-       GroundSpeedCompute(init_rpy, init_uvw); 
-       init_rpy; 
-       GetWindProfile(-init_pos_in_inertial_frame(3)); 
-       zeros(3,1)]; % 15*1
-sigma0 = blkdiag(4*eye(3), 2*eye(3), eye(3), eye(3), 0.5*eye(3)); % 15*15
-Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3), sigma_zeta); % 9*9
-R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), diag([row_pitch_accu^2, row_pitch_accu^2, yaw_accu^2]), airspeed_accu^2*eye(3)); % 12*12
+%% Extended Kalman Filter for States
+% state X = [x, y, z, x_dot, y_dot, z_dot, quaternion] 10*1
+EKF_freq = sensor_freq; % [Hz]
+[init_ground_vel, init_quat] = GroundSpeedCompute(init_rpy, init_uvw);
+state_mu0 = [init_pos_in_inertial_frame; 
+             init_ground_vel; 
+             init_quat]; % 10*1
+state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(4)); % 10*10
+Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
+R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), 0.001*eye(3)); % 10*10
+
 last_wind_pf0 = GetWindProfile(-init_pos_in_inertial_frame(3)); 
+
 
 %% Wind Estimator
 % period  = sampling_T!!! [s]
