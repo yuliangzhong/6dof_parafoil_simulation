@@ -14,13 +14,6 @@ wind_pf_size = 500;
 heights = linspace(1e-6, 50, wind_pf_size); % start from 0+ avoiding NaN
 wind_profile_hat = GetWindProfile(heights);
 
-% Delta_s = zeros(3,wind_pf_size);
-% for i = 2:wind_pf_size
-%     Delta_s(:,i) = [trapz(heights(1:i), wind_profile_hat(1, 1:i));
-%                     trapz(heights(1:i), wind_profile_hat(2, 1:i));
-%                     trapz(heights(1:i), wind_profile_hat(3, 1:i))];
-% end % Remember /Vz!!
-
 xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
@@ -102,11 +95,17 @@ airspeed_accu = 1; % [m/s]
 
 %% Extended Kalman Filter for States & Winds
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw, wx, wy, wz, delta_wx, delta_wy, delta_wz] 15*1
-EKF_freq = 10; % [Hz]
-mu0 = [init_pos_in_inertial_frame; 0;0;0; init_rpy; GetWindProfile(-init_pos_in_inertial_frame(3)); 0; 0; 0]; % 15*1
-sigma0 = blkdiag(2*eye(3), 3*eye(3), eye(3), eye(3), 0.5*eye(3)); % 15*15
+EKF_freq = 40; % [Hz]
+mu0 = [init_pos_in_inertial_frame; 
+       GroundSpeedCompute(init_rpy, init_uvw); 
+       init_rpy; 
+       GetWindProfile(-init_pos_in_inertial_frame(3)); 
+       zeros(3,1)]; % 15*1
+sigma0 = blkdiag(4*eye(3), 2*eye(3), eye(3), eye(3), 0.5*eye(3)); % 15*15
 Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3), sigma_zeta); % 9*9
 R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), diag([row_pitch_accu^2, row_pitch_accu^2, yaw_accu^2]), airspeed_accu^2*eye(3)); % 12*12
+last_wind_pf0 = GetWindProfile(-init_pos_in_inertial_frame(3)); 
+
 %% Wind Estimator
 % period  = sampling_T!!! [s]
 % mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
