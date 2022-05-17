@@ -88,7 +88,7 @@ pos_accu = 2; % [m]
 vel_accu = 0.1; % [m/s]
 row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
-acc_accu = 0.05; % [m/s^2]
+acc_accu = 0.1; % [m/s^2]
 angVel_accu = 0.1; % [deg/s]
 airspeed_accu = 1; % [m/s]
 % tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
@@ -108,8 +108,8 @@ last_wind_pf0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 
 %% Wind Estimator
 % period  = sampling_T!!! [s]
-% mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
-% sigma0 = eye(3); % wind variance initial guess
+mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
+sigma0 = eye(3); % wind variance initial guess
 % w_bar_hat0 = mu0;
 % wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
 % wind_est_noise_var = 3*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
