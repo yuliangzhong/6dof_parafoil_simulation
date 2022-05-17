@@ -94,16 +94,15 @@ airspeed_accu = 1; % [m/s]
 % tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
 
 %% Extended Kalman Filter for States
-% state X = [x, y, z, x_dot, y_dot, z_dot, quaternion] 10*1
+% state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
 EKF_freq = sensor_freq; % [Hz]
-[init_ground_vel, init_quat] = GroundSpeedCompute(init_rpy, init_uvw);
 state_mu0 = [init_pos_in_inertial_frame; 
-             init_ground_vel; 
-             init_quat]; % 10*1
-state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(4)); % 10*10
+             GroundSpeedCompute(init_rpy, init_uvw); 
+             init_rpy]; % 9*1
+state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
 Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
-R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), 0.001*eye(3)); % 10*10
-
+R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
+            diag([(row_pitch_accu/180*pi)^2, (row_pitch_accu/180*pi)^2, (yaw_accu/180*pi)^2])); % 9*9
 last_wind_pf0 = GetWindProfile(-init_pos_in_inertial_frame(3)); 
 
 
