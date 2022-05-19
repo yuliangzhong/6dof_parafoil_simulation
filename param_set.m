@@ -1,8 +1,9 @@
 %% Environment
 gravity_acc = + 9.81; % z-down
 
-%% Wind Profile, Pos Compensation and Wind Gust Dynamics
+%% Wind Profile and Wind Gust Dynamics
 vel_at6m = 3 * 0.5144; % wind velocity at 6m, absolute value, [knot]->[m/s]
+wind_gust_max = 5 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
 theta = 218; % [deg] constant
 
 wind_h = @(h) (h>0.04572)*vel_at6m.*log(h/0.04572)/log(6.096/0.04572); % wind shear model
@@ -10,18 +11,19 @@ theta_h = @(h) theta/180*pi + pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
-wind_pf_size = 500;
-heights = linspace(1e-6, 50, wind_pf_size); % start from 0+ avoiding NaN
+wind_pf_size = 3500;
+heights = linspace(1e-6, 350, wind_pf_size); % start from 0+ avoiding NaN
 wind_profile_hat = GetWindProfile(heights);
 
 xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
 
+delta_w_init = [(wind_gust_max - vel_at6m)*randn(2,1); 0]; % delta_w in [x, y, z]
 a_w = -0.00385;
-b_w = 0.0251;
-sigma_zeta = b_w^2*eye(3); % diagonal matrix
-
+b_w = 0.251;
+sigma_zeta = b_w^2*diag([1.5,1.5,0.1]); % diagonal matrix
+% tune sigma_zeta for gust simulation
 % params from paper 14/16
 
 %% Parafoil System
@@ -90,8 +92,10 @@ row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
 acc_accu = 0.1; % [m/s^2]
 angVel_accu = 0.1; % [deg/s]
-airspeed_accu = 1; % [m/s]
-% tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
+
+% should tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
+lpf_f = 0.25; % [Hz] Low Pass Filter cut-off frequency of airspeed
+airspeed_accu = 0.1; % [m/s] Accuracy after LPF
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
@@ -103,17 +107,14 @@ state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
 Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
 R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
             diag([(row_pitch_accu/180*pi)^2, (row_pitch_accu/180*pi)^2, (yaw_accu/180*pi)^2])); % 9*9
-last_wind_pf0 = GetWindProfile(-init_pos_in_inertial_frame(3)); 
-
 
 %% Wind Estimator
-% period  = sampling_T!!! [s]
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
 sigma0 = eye(3); % wind variance initial guess
-% w_bar_hat0 = mu0;
-% wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * diag(diag_sigma_zeta); % v ~ N(0, Q), Q matrix
-% wind_est_noise_var = 3*vel_accu*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
-wind_err0 = zeros(4,50);
+last_wind_pf0 = mu0; 
+wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * sigma_zeta; % v ~ N(0, Q), Q matrix
+wind_est_noise_var = airspeed_accu^2*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
+wind_err0 = zeros(4,15);
 
 %% Guidance
 guidance_horizon_N = 200;
