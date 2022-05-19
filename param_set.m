@@ -95,7 +95,7 @@ angVel_accu = 0.1; % [deg/s]
 
 % should tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
 lpf_f = 0.25; % [Hz] Low Pass Filter cut-off frequency of airspeed
-airspeed_accu = 0.1; % [m/s] Accuracy after LPF
+airspeed_accu = 0.06; % [m/s] Accuracy after LPF
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
