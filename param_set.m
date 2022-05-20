@@ -11,8 +11,8 @@ theta_h = @(h) theta/180*pi + pi; % forcasted wind field
 GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
                        wind_h(h).*sin(theta_h(h));
                        zeros(1,size(h,2))]; % [wx; wy; 0];
-wind_pf_size = 3500;
-heights = linspace(1e-6, 350, wind_pf_size); % start from 0+ avoiding NaN
+wind_pf_size = 1500;
+heights = linspace(1e-6, 150, wind_pf_size); % start from 0+ avoiding NaN
 wind_profile_hat = GetWindProfile(heights);
 
 xi = 0.0* [randn();
@@ -78,10 +78,10 @@ cD = [c_D0; c_Da2; c_Dds]; % drag force coefficients
 cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone and Initiation
-[Ax, bx, init_xy_pos] = SafeZoneCompute(0);
-init_pos_in_inertial_frame = [init_xy_pos; -330]; % x-North, z-down, y-East
+[Ax, bx, init_xy_pos] = SafeZoneCompute(1);
+init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
 init_rpy = [0; 0; 0/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-init_uvw = [4.575; 0; 1.371]; % velocity in body frame % shouldn't be all zero
+init_uvw = [3.88; 0; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
 %% Sensor Model: Accuracy after Primary Sensor Fusion
@@ -117,27 +117,44 @@ wind_est_noise_var = airspeed_accu^2*eye(3); % d ~ N(0, R), R matrix, sensor noi
 wind_err0 = zeros(4,15);
 
 %% Guidance
+psi_d = pi; % desired landing orientation
+
 guidance_horizon_N = 200;
-guidance0 = zeros(5, guidance_horizon_N); % [x, y, h, psi, psi_dot]
-Vz = 1.3926; % descending rate without wind [m/s]
-Vh = 4.6027; % horizontal vel without wind [m/s]
-vel_info = [286.0601, Vh, Vz];
-psi_dot_m = 0.2190; % maximum turning angular vel without wind [rad/s]
-psi_d = pi;
-guidance_info0 = [-init_pos_in_inertial_frame(3); Vz/Vh]; % [h, kappa]
-pd_ctrler_T = 0.1; % [s]
+
+Vz = 1.6160; % descending rate without wind [m/s]; delta_s = 0.5
+Vh = 3.8772; % horizontal vel without wind [m/s]; delta_s = 0.5
+vel_info = [81.22, Vh, Vz]; % corresponding height
+
+psi_dot_m = 0.1906; % maximum turning angular vel without wind [rad/s]
+delta_dot_m = 0.5; % [/s]
+psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
+
+[flag, guidance0] = GuidanceSolve(1, guidance_horizon_N, psi_d, vel_info, psi_dot_m, psi_ddot_m, ...
+                [init_xy_pos;-init_pos_in_inertial_frame(3);init_rpy(3)], ...
+                0, heights, wind_profile_hat, Ax, bx, zeros(5,guidance_horizon_N)); % solve initial guidance offline
+plot(guidance0(2,:), guidance0(1,:),'r');
+% guidance0 = zeros(5,guidance_horizon_N);
+
+pd_controller_freq = 10; % [Hz]
 
 %% MPCC Tracker
 time_horizon_N = 100; % should not exceed 1000
 mpc_samping_T = 0.1; % [s]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
+vel_info_mpcc = [4.82; 3.35; 1.52; 1.65]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
 
-%% Aerodynamic Coefficients Estimator
-aeroF_co_mu0 = [0 0 0; 
-                0 0 0; 
-                0 0 0;
-                3 3 3]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
-aeroF_co_sigma0 = 0.01*[diag([1,1,1,1]), diag([1,1,1,1]), diag([1,1,1,1])];
-aeroF_est_noise_var = 0.0005*eye(3);
+
+
+
+
+
+
+% %% Aerodynamic Coefficients Estimator
+% aeroF_co_mu0 = [0 0 0; 
+%                 0 0 0; 
+%                 0 0 0;
+%                 3 3 3]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
+% aeroF_co_sigma0 = 0.01*[diag([1,1,1,1]), diag([1,1,1,1]), diag([1,1,1,1])];
+% aeroF_est_noise_var = 0.0005*eye(3);
 
 % warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % mpcc

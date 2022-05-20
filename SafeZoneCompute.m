@@ -15,15 +15,19 @@ PC = T*[60; 45];
 PD = T*[-60; 45];
 points = [PA, PB, PC, PD];
 
+init_xy_pos = PA+[5;5];
+
 if if_plot
     hold on
     grid on
     patch(points(2,:), points(1,:),'g','FaceAlpha',.3);
-    scatter(0, 0, 'r', 'filled')
+    scatter(0, 0, 'r')
+    scatter(init_xy_pos(2),init_xy_pos(1),'b','filled')
+    xlim([-80 80])
+    ylim([-80 80])
     xlabel('East --> y') 
     ylabel('North --> x') 
     axis 'equal'
-    hold off
 end
 
 % calculate constraints
@@ -35,5 +39,4 @@ bx = [k1*PB(1)-PB(2);
      -k1*PD(1)+PD(2);
       k2*PB(1)-PB(2);
      -k2*PD(1)+PD(2)];
-init_xy_pos = PA;
 end
