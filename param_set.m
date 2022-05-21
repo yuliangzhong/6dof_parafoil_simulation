@@ -2,9 +2,9 @@
 gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
-vel_at6m = 3 * 0.5144; % wind velocity at 6m, absolute value, [knot]->[m/s]
-wind_gust_max = 5 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
-theta = 218; % [deg] constant
+vel_at6m = 2 * 0.5144; % wind velocity at 6m, absolute value, [knot]->[m/s]
+wind_gust_max = 2.4 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
+theta = 45; % [deg] constant
 
 wind_h = @(h) (h>0.04572)*vel_at6m.*log(h/0.04572)/log(6.096/0.04572); % wind shear model
 theta_h = @(h) theta/180*pi + pi; % forcasted wind field
@@ -22,7 +22,7 @@ xi = 0.0* [randn();
 delta_w_init = [(wind_gust_max - vel_at6m)*randn(2,1); 0]; % delta_w in [x, y, z]
 a_w = -0.00385;
 b_w = 0.251;
-sigma_zeta = b_w^2*diag([1.5,1.5,0.1]); % diagonal matrix
+sigma_zeta = b_w^2*diag([1, 1, 0.1]); % diagonal matrix
 % tune sigma_zeta for gust simulation
 % params from paper 14/16
 
@@ -78,7 +78,7 @@ cD = [c_D0; c_Da2; c_Dds]; % drag force coefficients
 cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone and Initiation
-[Ax, bx, init_xy_pos] = SafeZoneCompute(1);
+[Axbxh, init_xy_pos] = SafeZoneCompute(0);
 init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
 init_rpy = [0; 0; 0/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.88; 0; 1.62]; % velocity in body frame % shouldn't be all zero
@@ -110,7 +110,7 @@ R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
 
 %% Wind Estimator
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
-sigma0 = eye(3); % wind variance initial guess
+sigma0 = 0.5*eye(3); % wind variance initial guess
 last_wind_pf0 = mu0; 
 wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * sigma_zeta; % v ~ N(0, Q), Q matrix
 wind_est_noise_var = airspeed_accu^2*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
@@ -120,29 +120,22 @@ wind_err0 = zeros(4,15);
 psi_d = pi; % desired landing orientation
 
 guidance_horizon_N = 200;
+guidance0 = zeros(5,guidance_horizon_N);
 
-Vz = 1.6160; % descending rate without wind [m/s]; delta_s = 0.5
-Vh = 3.8772; % horizontal vel without wind [m/s]; delta_s = 0.5
-vel_info = [81.22, Vh, Vz]; % corresponding height
+vel_info = [95.551, 3.87807, 1.61823]; % corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
 
 psi_dot_m = 0.1906; % maximum turning angular vel without wind [rad/s]
 delta_dot_m = 0.5; % [/s]
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 
-[flag, guidance0] = GuidanceSolve(1, guidance_horizon_N, psi_d, vel_info, psi_dot_m, psi_ddot_m, ...
-                [init_xy_pos;-init_pos_in_inertial_frame(3);init_rpy(3)], ...
-                0, heights, wind_profile_hat, Ax, bx, zeros(5,guidance_horizon_N)); % solve initial guidance offline
-plot(guidance0(2,:), guidance0(1,:),'r');
-% guidance0 = zeros(5,guidance_horizon_N);
-
 pd_controller_freq = 10; % [Hz]
 
 %% MPCC Tracker
 time_horizon_N = 100; % should not exceed 1000
-mpc_samping_T = 0.1; % [s]
+% mpc_samping_T = 0.1; % [s]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
-vel_info_mpcc = [4.82; 3.35; 1.52; 1.65]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
-
+% vel_info_mpcc = [4.82; 3.35; 1.52; 1.65]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
+% 
 
 
 
