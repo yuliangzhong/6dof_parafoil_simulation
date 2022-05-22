@@ -4,25 +4,41 @@ gravity_acc = + 9.81; % z-down
 %% Wind Profile and Wind Gust Dynamics
 vel_at6m = 2 * 0.5144; % wind velocity at 6m, absolute value, [knot]->[m/s]
 wind_gust_max = 2.4 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
-theta = 45; % [deg] constant
+theta = 28; % [deg] constant
+wind_pf_size = 3000;
+height_lim = 150; % h \in (0, height_lim]
 
 wind_h = @(h) (h>0.04572)*vel_at6m.*log(h/0.04572)/log(6.096/0.04572); % wind shear model
-theta_h = @(h) theta/180*pi + pi; % forcasted wind field
-GetWindProfile = @(h) [wind_h(h).*cos(theta_h(h));
-                       wind_h(h).*sin(theta_h(h));
+theta_h = theta/180*pi + pi; % forcasted wind field
+GetWindProfile = @(h) [wind_h(h)*cos(theta_h);
+                       wind_h(h)*sin(theta_h);
                        zeros(1,size(h,2))]; % [wx; wy; 0];
-wind_pf_size = 1500;
-heights = linspace(1e-6, 150, wind_pf_size); % start from 0+ avoiding NaN
+
+heights = linspace(1e-6, height_lim, wind_pf_size); % start from 0+ avoiding NaN
+dh = height_lim/wind_pf_size;
 wind_profile_hat = GetWindProfile(heights);
 
 xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
 
-delta_w_init = [(wind_gust_max - vel_at6m)*randn(2,1); 0]; % delta_w in [x, y, z]
+% delta_w_init = [(wind_gust_max - vel_at6m)*randn(2,1); 0]; % delta_w in [x, y, z]
+% sigma_zeta = b_w^2*eye(3); % diagonal matrix
+
+% compute delta_w for simulation
+delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
-b_w = 0.251;
-sigma_zeta = b_w^2*diag([1, 1, 0.1]); % diagonal matrix
+b_w = 8 * 0.0251;
+for i = 2:wind_pf_size
+    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[randn(2,1);0.5*randn()];
+end
+% tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
+mean(vecnorm(delta_ws(1:2,:)))
+hold on
+plot(heights, delta_ws(1,:));
+plot(heights, delta_ws(2,:));
+plot(heights, delta_ws(3,:));
+
 % tune sigma_zeta for gust simulation
 % params from paper 14/16
 
@@ -77,11 +93,12 @@ cL = [c_L0; c_La; c_Lds]; % lift force coefficients
 cD = [c_D0; c_Da2; c_Dds]; % drag force coefficients
 cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
-%% Safe Zone and Initiation
+%% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
+vel_info = [95.551, 3.87807, 1.61823]; % corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
 init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
-init_rpy = [0; 0; 0/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
-init_uvw = [3.88; 0; 1.62]; % velocity in body frame % shouldn't be all zero
+init_rpy = [0; 0.006; -10/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
 %% Sensor Model: Accuracy after Primary Sensor Fusion
@@ -94,8 +111,7 @@ acc_accu = 0.1; % [m/s^2]
 angVel_accu = 0.1; % [deg/s]
 
 % should tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
-lpf_f = 0.25; % [Hz] Low Pass Filter cut-off frequency of airspeed
-airspeed_accu = 0.06; % [m/s] Accuracy after LPF
+airspeed_accu = 0.3; % [m/s] Accuracy of B_v_IB_tilde after LPF
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
@@ -110,9 +126,12 @@ R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
 
 %% Wind Estimator
 mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
-sigma0 = 0.5*eye(3); % wind variance initial guess
+% mu0 = [GetWindProfile(-init_pos_in_inertial_frame(3));0;0;0]; % 6*1, wind / delta_w
+% sigma0 = 0.5*eye(3);
+sigma0 = eye(3); % wind variance initial guess
 last_wind_pf0 = mu0; 
-wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * sigma_zeta; % v ~ N(0, Q), Q matrix
+% wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * sigma_zeta; % v ~ N(0, Q), Q matrix
+wind_est_dyn_var = (b_w*vel_info(3)*1/sensor_freq)^2*eye(3);
 wind_est_noise_var = airspeed_accu^2*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
 wind_err0 = zeros(4,15);
 
@@ -122,8 +141,6 @@ psi_d = pi; % desired landing orientation
 guidance_horizon_N = 200;
 guidance0 = zeros(5,guidance_horizon_N);
 
-vel_info = [95.551, 3.87807, 1.61823]; % corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
-
 psi_dot_m = 0.1906; % maximum turning angular vel without wind [rad/s]
 delta_dot_m = 0.5; % [/s]
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
@@ -132,14 +149,21 @@ pd_controller_freq = 10; % [Hz]
 
 %% MPCC Tracker
 time_horizon_N = 100; % should not exceed 1000
-% mpc_samping_T = 0.1; % [s]
+mpcc_freq = 1; % [Hz]
+mpcc_pd_freq = 10; % [Hz]
+mpcc_Ts = 0.05; % [s]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
 % vel_info_mpcc = [4.82; 3.35; 1.52; 1.65]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
-% 
 
+%% Motor Model
+% delta_s: 2nd order response
+wd = pi/1.35; % omega_d = pi/tp
+Mp = abs(2.86574-3.35184)/abs(3.35184-4.8196); % Mp = |c_peak - c_inf| / |c_start - c_inf|
+zeta = sqrt((log(Mp)/pi)^2/(1+(log(Mp)/pi)^2));
+wn = wd / sqrt(1-zeta^2); % omega_n = omega_d / sqrt(1-zeta^2)
 
-
-
+% delta_a: 1st order response
+Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
 
 
 % %% Aerodynamic Coefficients Estimator
