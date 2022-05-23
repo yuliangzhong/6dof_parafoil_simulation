@@ -95,11 +95,13 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
-vel_info = [95.551, 3.87807, 1.61823]; % corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
 init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
 init_rpy = [0; 0.006; -10/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
+
+% for guidance, corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
+vel_info = [95.551, 3.87807, 1.61823]; 
 
 %% Sensor Model: Accuracy after Primary Sensor Fusion
 sensor_freq = 20; % [Hz] sensor data subscriber frequency
@@ -109,9 +111,7 @@ row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
 acc_accu = 0.1; % [m/s^2]
 angVel_accu = 0.1; % [deg/s]
-
 % should tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
-airspeed_accu = [0.3, 0.3, 0.1]; % [m/s] Accuracy of B_v_IB_tilde after LPF
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
@@ -142,7 +142,8 @@ mpcc_freq = 1; % [Hz]
 mpcc_pd_freq = 10; % [Hz]
 mpcc_Ts = 0.05; % [s]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
-% vel_info_mpcc = [4.82; 3.35; 1.52; 1.65]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
+% vel_info_mpcc = [4.82; 3.35; 1.515; 1.653]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
+warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % mpcc
 
 %% Motor Model
 % delta_s: 2nd order response
@@ -153,3 +154,4 @@ wn = wd / sqrt(1-zeta^2); % omega_n = omega_d / sqrt(1-zeta^2)
 
 % delta_a: 1st order response
 Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
+

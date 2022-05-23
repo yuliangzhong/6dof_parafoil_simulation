@@ -19,5 +19,5 @@ SafeZoneCompute(1)
 init_cond = [init_pos_in_inertial_frame(1:2); 100; 0];
 psi_dot_now = 0;
 
-[flag, guidance] = GuidanceSolve(time_horizon_N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, Axbxh, zeros(5,200));
+[flag, guidance] = GuidanceSolve(guidance_horizon_N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, Axbxh, zeros(5,200));
 plot3(guidance(2,:),guidance(1,:), guidance(3,:))

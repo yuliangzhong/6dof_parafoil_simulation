@@ -26,32 +26,25 @@ Vh = @(h) Vh0*sqrt(rho(h0)./rho(h));
 
 % time gap
 tf = sqrt(ch)/(cz*cf*Vz0*sqrt(rho(h0)))*(1-(1-cz*h0)^cf);
-% tf = h0/1.62;
-
 dt = tf/(N-1);
 % time mesh
 times = linspace(0, tf, N);
 hs = h(times);
 Vhs = Vh(hs);
-% Vhs = 3.87*ones(1,N);
 
 Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
       interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
 %% Compute Safezone Constraints
-% disp(hs)
-inds = zeros(size(Axbxh,1),1);
+inds = zeros(size(Axbxh,1),1); % turn h to index
 for i = 1:size(Axbxh,1)
     inds(i) = find(hs<Axbxh(i,4),1);
 end
-% disp(inds)
-% disp(Vhs)
 
 %% Optimization
 
 lambda1 = 100;
 lambda2 = 100;
-lambda3 = 0.01;
 
 Au = [1; -1];
 bu = [psi_dot_m; psi_dot_m];
@@ -65,10 +58,10 @@ if sum(old_guidance==0, 'all')<3
     x_guess = zeros(3,N);
     u_guess = zeros(1,N);
     for i = 1:N
-        x_guess(:,i) = [interp1(old_guidance(3,:), old_guidance(1,:),hs(i),'linear','extrap');
-                        interp1(old_guidance(3,:), old_guidance(2,:),hs(i),'linear','extrap');
-                        interp1(old_guidance(3,:), old_guidance(4,:),hs(i),'linear','extrap')];
-        u_guess(i) = interp1(old_guidance(3,:),old_guidance(5,:),hs(i),'linear', 'extrap');
+        x_guess(:,i) = [interp1(old_guidance(3,:), old_guidance(1,:),hs(i),'spline','extrap');
+                        interp1(old_guidance(3,:), old_guidance(2,:),hs(i),'spline','extrap');
+                        interp1(old_guidance(3,:), old_guidance(4,:),hs(i),'spline','extrap')];
+        u_guess(i) = interp1(old_guidance(3,:),old_guidance(5,:),hs(i),'spline', 'extrap');
     end
     Prob.set_initial(x, x_guess);
     Prob.set_initial(u, u_guess);
@@ -88,7 +81,7 @@ for i = 1:N-1
                                              (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
                                              u(i)]);
     % u2~uN
-    cost = cost + lambda3*u(i+1)^2*dt;
+    cost = cost + u(i+1)^2*dt;
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
     % u2-u1 ~ uN-uN-1
     Prob.subject_to(((u(i+1)-u(i))/dt)^2 <= psi_ddot_m^2) % control input time derivitive constraints
@@ -96,19 +89,19 @@ end
 
 % constraints of safezone
 for j = 1:size(Axbxh,1)
+    % x_ind ~ xN
     for k = inds(j):N
-        Prob.subject_to(Axbxh(j,1:2)*x(1:2,k) <= Axbxh(j,3))
+        Prob.subject_to(Axbxh(j,1:2)*x(1:2,k) <= Axbxh(j,3));
     end
 end
 
 Prob.minimize(cost)
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
-sol = Prob.solve();
 
-% --- output ---
-flag = sol.stats.success;
-guidance = zeros(5, N);
-if flag
+% solve the guidance problem & give output
+try
+    sol = Prob.solve();
+
     xs = sol.value(x);
     us = sol.value(u);
     guidance(1:2,1:N) = xs(1:2,1:N);
@@ -121,13 +114,18 @@ if flag
     cost2 = lambda2*(1-cos(xs(3,end)-psi_d));
     cost3 = 0;
     for i = 1:N-1
-    % x2~xN
-        cost3 = cost3 + lambda3*us(i)^2*dt;
+    % u2~uN
+        cost3 = cost3 + us(i+1)^2*dt;
     end
     disp([cost1, cost2, cost3])
+    
+    flag = true;
 
-else
+catch
     disp("ERROR! Guidance solver failed!!")
+    flag = false;
+    guidance = zeros(5, N);
+
 end
 
 toc
