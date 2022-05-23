@@ -22,24 +22,24 @@ xi = 0.0* [randn();
            randn();
            0]; % wind profile error at 200[m]
 
-% delta_w_init = [(wind_gust_max - vel_at6m)*randn(2,1); 0]; % delta_w in [x, y, z]
-% sigma_zeta = b_w^2*eye(3); % diagonal matrix
-
 % compute delta_w for simulation
 delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
 b_w = 8 * 0.0251;
+ratios = [1, 1, 0.5];
 for i = 2:wind_pf_size
-    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[randn(2,1);0.5*randn()];
+    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
 end
 % tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
+
 mean(vecnorm(delta_ws(1:2,:)))
 hold on
 plot(heights, delta_ws(1,:));
 plot(heights, delta_ws(2,:));
 plot(heights, delta_ws(3,:));
 
-% tune sigma_zeta for gust simulation
+wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error storage
+
 % params from paper 14/16
 
 %% Parafoil System
@@ -111,7 +111,7 @@ acc_accu = 0.1; % [m/s^2]
 angVel_accu = 0.1; % [deg/s]
 
 % should tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
-airspeed_accu = 0.3; % [m/s] Accuracy of B_v_IB_tilde after LPF
+airspeed_accu = [0.3, 0.3, 0.1]; % [m/s] Accuracy of B_v_IB_tilde after LPF
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
@@ -123,17 +123,6 @@ state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
 Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
 R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
             diag([(row_pitch_accu/180*pi)^2, (row_pitch_accu/180*pi)^2, (yaw_accu/180*pi)^2])); % 9*9
-
-%% Wind Estimator
-mu0 = GetWindProfile(-init_pos_in_inertial_frame(3));
-% mu0 = [GetWindProfile(-init_pos_in_inertial_frame(3));0;0;0]; % 6*1, wind / delta_w
-% sigma0 = 0.5*eye(3);
-sigma0 = eye(3); % wind variance initial guess
-last_wind_pf0 = mu0; 
-% wind_est_dyn_var = 1.01 * (1/sensor_freq)^2 * sigma_zeta; % v ~ N(0, Q), Q matrix
-wind_est_dyn_var = (b_w*vel_info(3)*1/sensor_freq)^2*eye(3);
-wind_est_noise_var = airspeed_accu^2*eye(3); % d ~ N(0, R), R matrix, sensor noise, needs tuning
-wind_err0 = zeros(4,15);
 
 %% Guidance
 psi_d = pi; % desired landing orientation
@@ -164,14 +153,3 @@ wn = wd / sqrt(1-zeta^2); % omega_n = omega_d / sqrt(1-zeta^2)
 
 % delta_a: 1st order response
 Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
-
-
-% %% Aerodynamic Coefficients Estimator
-% aeroF_co_mu0 = [0 0 0; 
-%                 0 0 0; 
-%                 0 0 0;
-%                 3 3 3]; % [cD; cYb; cL; cDpd], delta_s = 0; 0.5; 1;
-% aeroF_co_sigma0 = 0.01*[diag([1,1,1,1]), diag([1,1,1,1]), diag([1,1,1,1])];
-% aeroF_est_noise_var = 0.0005*eye(3);
-
-% warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % mpcc
