@@ -33,10 +33,10 @@ end
 % tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
 
 mean(vecnorm(delta_ws(1:2,:)))
-hold on
-plot(heights, delta_ws(1,:));
-plot(heights, delta_ws(2,:));
-plot(heights, delta_ws(3,:));
+% hold on
+% plot(heights, delta_ws(1,:));
+% plot(heights, delta_ws(2,:));
+% plot(heights, delta_ws(3,:));
 
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error storage
 
@@ -101,7 +101,12 @@ init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all ze
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
 % for guidance, corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
-vel_info = [95.551, 3.87807, 1.61823]; 
+vel_info = [95.551, 3.87807, 1.61823]; % [m, m/s, m/s]
+% for control, [Vh0, Vh1, Vz0, Vz1], without wind when delta_s = 0,1
+vel_info_mpcc = [4.82; 3.35; 1.515; 1.653]; % [m/s]
+
+psi_dot_m = 0.1906; % maximum turning angular vel without wind [rad/s]
+delta_dot_m = 0.5; % [/s]
 
 %% Sensor Model: Accuracy after Primary Sensor Fusion
 sensor_freq = 20; % [Hz] sensor data subscriber frequency
@@ -128,22 +133,18 @@ R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
 psi_d = pi; % desired landing orientation
 
 guidance_horizon_N = 200;
-guidance0 = zeros(5,guidance_horizon_N);
-
-psi_dot_m = 0.1906; % maximum turning angular vel without wind [rad/s]
-delta_dot_m = 0.5; % [/s]
+guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame, init_rpy, vel_info);
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 
-pd_controller_freq = 10; % [Hz]
+% pd_controller_freq = 10; % [Hz]
 
 %% MPCC Tracker
-time_horizon_N = 100; % should not exceed 1000
+time_horizon_N = 50; % 100 is enough
 mpcc_freq = 1; % [Hz]
-mpcc_pd_freq = 10; % [Hz]
 mpcc_Ts = 0.05; % [s]
+mpcc_ctrl_freq = 10; % [Hz]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
-% vel_info_mpcc = [4.82; 3.35; 1.515; 1.653]; % [m/s] [Vh0, Vh1, Vz0, Vz1]
-warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % mpcc
+warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings in mpcc
 
 %% Motor Model
 % delta_s: 2nd order response

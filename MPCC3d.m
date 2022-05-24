@@ -1,17 +1,11 @@
-function [flag, control] = MPCC3d(N, Ts, vel_info, psi_dot_m, init_cond, guidance, heights, wind_profile_hat, wind_dis)
+function [flag, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
 
 tic
 
-%% Parameters Reading
-ch = 1.225;
-cz = 2.256e-5;
-ce = 4.2559;
+%% Parameters Definition
 
-% functions
 h0 = init_cond(3);
-rho = @(h) ch*(1-h*cz).^ce; % air density model
-Vh = sqrt(rho(vel_info(1))*vel_info(2)^2/rho(h0)); % xy-vel no wind at current height
-Vz = sqrt(rho(vel_info(1))*vel_info(3)^2/rho(h0)); % z-vel no wind at current height
+Vz = vel_info(3);
 um = psi_dot_m;
 Au = [1, 0.5, 0;
       1, -0.5,0;
@@ -27,7 +21,7 @@ extrap_heights_num = 100;
 interp_heights = linspace(h_max, h_min, extrap_heights_num);
 interp_method = 'spline';
 if h0 < 10
-    interp_method = 'linear';
+    interp_method = 'linear'; % to avoid strange fitting near the ground
 end
 interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, interp_method, 'extrap');
                    interp1(guidance(3,:), guidance(2,:), interp_heights, interp_method, 'extrap');
@@ -35,8 +29,7 @@ interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, interp_
 interp_wind_pf = [interp1(heights, wind_profile_hat(1,:), interp_heights, 'linear', 'extrap');
                   interp1(heights, wind_profile_hat(2,:), interp_heights, 'linear', 'extrap')];
 
-[~, id] = min(vecnorm(interp_guidance(1:2,:) - init_cond(1:2)*ones(1,size(interp_guidance,2))));
-hr = interp_guidance(3,id);
+%% Function Fit
 
 % fx
 px = polyfit(interp_guidance(3,:), interp_guidance(1,:), 10);
@@ -55,23 +48,39 @@ wx = @(x) pwx*[x.^10; x.^9; x.^8; x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,
 pwy = polyfit(interp_heights, interp_wind_pf(2,:), 10);
 wy = @(x) pwy*[x.^10; x.^9; x.^8; x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];
 
-% wx, wy are valid only when h>0!! ??
+% wx, wy are valid only when h>0!!
 
-Vh_f = @(x) (3.35-4.82)*x + 4.82;
-Vz_f = @(x) (1.653-1.515)*x + 1.515;
+% assume linear control model
+Vh_f = @(x) (vel_info_mpcc(2)-vel_info_mpcc(1))*x + vel_info_mpcc(1);
+Vz_f = @(x) (vel_info_mpcc(4)-vel_info_mpcc(3))*x + vel_info_mpcc(3);
 dpsi_f = @(x) um*x;
 
-%% MPC formulation
+%% Compute Initial Guess
+sz = size(guidance,2);
+[~, id] = min(vecnorm(guidance(1:3,:) - init_cond(1:3)*ones(1,sz)));
+hr = guidance(3,id);
+idn = min(sz, id+N-1);
+x_guess = [guidance(1:4,id:idn),zeros(4,N-(idn-id+1));
+           guidance(3,id:idn),zeros(1,N-(idn-id+1))]; % 5*N
+u_guess = [0.5*ones(1,N);
+           [guidance(3,id:idn),zeros(1,N-(idn-id+1))]/psi_dot_m;
+           Vz*ones(1,N)]; % 3*N
 
-% P = diag([10000, 10000]);
-Q = diag([100, 100, 100]);
+%% MPC Formulation
+
+Q = diag([100, 100, 200]);
 R = diag([10, 10, 10]);
 q_eta = 50;
 
 Prob = casadi.Opti();
+
 % --- define optimization variables ---
 X = Prob.variable(5, N); % [x, y, h, psi, eta]
 U = Prob.variable(3, N);   % [ds, da, v]
+
+% --- set initial guess from control --- 
+Prob.set_initial(X, x_guess);
+Prob.set_initial(U, u_guess);
 
 % --- calculate objective --- 
 objective = 0;
@@ -91,15 +100,25 @@ end
 Prob.minimize(objective)
 
 % --- define constraints ---
-Prob.subject_to(X(:,1)==[init_cond; hr]);
+Prob.subject_to(X(:,1) == [init_cond; hr]);
+Prob.subject_to(U(1:2,1) == init_dsda);
+Prob.subject_to(Au*U(:,N)<=bu);
 
 for i = 1:N-1
     Prob.subject_to(Au*U(:,i)<=bu);
-    Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh_f(U(1,i)) * cos(X(4,i)) + wx(X(3,i)) + wind_dis(1);
-                                              Vh_f(U(1,i)) * sin(X(4,i)) + wy(X(3,i)) + wind_dis(2);
-                                              - (Vz_f(U(1,i)) + wind_dis(3));
-                                              dpsi_f(U(2,i));
-                                              -U(3,i)]);
+    if i > ceil(h0/Ts/(Vz+wind_dis(3))) % if landed at ground, no wind disturbance
+        Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh_f(U(1,i)) * cos(X(4,i));
+                                                  Vh_f(U(1,i)) * sin(X(4,i));
+                                                  - (Vz_f(U(1,i)) + wind_dis(3));
+                                                  dpsi_f(U(2,i));
+                                                  -U(3,i)]);
+    else
+        Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh_f(U(1,i)) * cos(X(4,i)) + wx(X(3,i)) + wind_dis(1);
+                                                  Vh_f(U(1,i)) * sin(X(4,i)) + wy(X(3,i)) + wind_dis(2);
+                                                  - (Vz_f(U(1,i)) + wind_dis(3));
+                                                  dpsi_f(U(2,i));
+                                                  -U(3,i)]);
+    end
 end
 
 % --- define solver ---
@@ -122,13 +141,9 @@ end
 %% plot
 hold on
 grid on
-scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 'g')
-plot3(xs(2,:), xs(1,:), xs(3,:), 'b','LineWidth',1)
-% scatter(xs(2,:),xs(1,:),'b')
-% scatter(guidance(2,:), guidance(1,:), 'm')
-% plot(interp_guidance(2,:), interp_guidance(1,:),'k')
-% scatter(init_cond(2), init_cond(1),'b','filled')
+scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
+plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
 
 toc
-text(init_cond(2)+3, init_cond(1), num2str(toc))
+text(init_cond(2)+10, init_cond(1), num2str(toc))
 end

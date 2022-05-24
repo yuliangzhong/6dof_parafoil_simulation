@@ -1,7 +1,7 @@
 % solving guidance by casadi + ipopt
 % with safety constraints
 
-function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot0, heights, wind_profile_hat, Axbxh, old_guidance)
+function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, Axbxh, guidance_guess)
 
 tic
 
@@ -41,7 +41,7 @@ for i = 1:size(Axbxh,1)
     inds(i) = find(hs<Axbxh(i,4),1);
 end
 
-%% Optimization
+%% Optimization Start
 
 lambda1 = 100;
 lambda2 = 100;
@@ -53,18 +53,22 @@ Prob = casadi.Opti();
 x = Prob.variable(3, N);
 u = Prob.variable(1, N);
 
-% set initial guess from old guidance
-if sum(old_guidance==0, 'all')<3
+% set initial guess from guidance guess
+try
     x_guess = zeros(3,N);
     u_guess = zeros(1,N);
     for i = 1:N
-        x_guess(:,i) = [interp1(old_guidance(3,:), old_guidance(1,:),hs(i),'spline','extrap');
-                        interp1(old_guidance(3,:), old_guidance(2,:),hs(i),'spline','extrap');
-                        interp1(old_guidance(3,:), old_guidance(4,:),hs(i),'spline','extrap')];
-        u_guess(i) = interp1(old_guidance(3,:),old_guidance(5,:),hs(i),'spline', 'extrap');
+        x_guess(:,i) = [interp1(guidance_guess(3,:), guidance_guess(1,:),hs(i),'spline','extrap');
+                        interp1(guidance_guess(3,:), guidance_guess(2,:),hs(i),'spline','extrap');
+                        interp1(guidance_guess(3,:), guidance_guess(4,:),hs(i),'spline','extrap')];
+        u_guess(i) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
     end
     Prob.set_initial(x, x_guess);
     Prob.set_initial(u, u_guess);
+catch
+    disp("ERROR! guidance_guess should be interpolatable!!")
+    flag = false;
+    guidance = zeros(5, N);
 end
 
 % costs and constraints
@@ -73,7 +77,7 @@ cost = lambda1*(x(1,end)^2 + x(2,end)^2) + lambda2*(1-cos(x(3,end)-psi_d));
 % x1
 Prob.subject_to(x(:,1) == [x0; y0; psi_0]);
 % u1
-Prob.subject_to(u(1) == psi_dot0);
+Prob.subject_to(u(1) == psi_dot_now);
 
 for i = 1:N-1
     % x2~xN
@@ -118,14 +122,13 @@ try
         cost3 = cost3 + us(i+1)^2*dt;
     end
     disp([cost1, cost2, cost3])
-    
+
     flag = true;
 
 catch
     disp("ERROR! Guidance solver failed!!")
     flag = false;
     guidance = zeros(5, N);
-
 end
 
 toc
