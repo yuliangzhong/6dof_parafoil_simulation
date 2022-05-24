@@ -66,9 +66,7 @@ try
     Prob.set_initial(x, x_guess);
     Prob.set_initial(u, u_guess);
 catch
-    disp("ERROR! guidance_guess should be interpolatable!!")
-    flag = false;
-    guidance = zeros(5, N);
+    disp("WARNING! Solving guidance without initial guess!!")
 end
 
 % costs and constraints
@@ -88,7 +86,8 @@ for i = 1:N-1
     cost = cost + u(i+1)^2*dt;
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
     % u2-u1 ~ uN-uN-1
-    Prob.subject_to(((u(i+1)-u(i))/dt)^2 <= psi_ddot_m^2) % control input time derivitive constraints
+    Prob.subject_to(u(i+1)-u(i) <= dt*psi_ddot_m)
+    Prob.subject_to(u(i+1)-u(i) >= -dt*psi_ddot_m) % control input time derivitive constraints
 end
 
 % constraints of safezone

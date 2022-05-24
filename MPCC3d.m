@@ -4,20 +4,30 @@ tic
 
 %% Parameters Definition
 
+delta_s_dot = 0.5;
+
 h0 = init_cond(3);
 Vz = vel_info(3);
 um = psi_dot_m;
-Au = [1, 0.5, 0;
-      1, -0.5,0;
-      -1,-0.5,0;
-      -1, 0.5,0;
-      0, 0, 1;
-      0, 0, -1];
-bu = [1; 1; 0; 0; 2*Vz; 0*Vz];
+Au = [1, 0.5;
+      1, -0.5;
+      -1,-0.5;
+      -1, 0.5];
+bu = [1; 1; 0; 0];
+Av = [1; -1];
+bv = [2*Vz; 0];
+As = [1, 0;
+      -1,0;
+      0, 1;
+      0,-1];
+bs = delta_s_dot*[1; 1; 2; 2];
 
-% interpolate guidance & wind profile
-h_max = h0+10; h_min = max(-5,h0-10);
-extrap_heights_num = 100;
+%% interpolate guidance & wind profile
+dh = Ts*(Vz+wind_dis(3));
+h_range = 1.1*N*dh;
+h_max = h0 + h_range; 
+h_min = max(0 - h_range, h0 - 2*h_range);
+extrap_heights_num = (h_max - h_min)/dh+1;
 interp_heights = linspace(h_max, h_min, extrap_heights_num);
 interp_method = 'spline';
 if h0 < 10
@@ -25,9 +35,18 @@ if h0 < 10
 end
 interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, interp_method, 'extrap');
                    interp1(guidance(3,:), guidance(2,:), interp_heights, interp_method, 'extrap');
-                   interp_heights];
+                   interp_heights;
+                   interp1(guidance(3,:), guidance(4,:), interp_heights, interp_method, 'extrap');
+                   interp1(guidance(3,:), guidance(5,:), interp_heights, interp_method, 'extrap')];
+
 interp_wind_pf = [interp1(heights, wind_profile_hat(1,:), interp_heights, 'linear', 'extrap');
                   interp1(heights, wind_profile_hat(2,:), interp_heights, 'linear', 'extrap')];
+
+[~, id] = min(vecnorm(interp_guidance(1:3,:) - init_cond(1:3)*ones(1,size(interp_guidance,2))));
+xr = interp_guidance(1,id);
+yr = interp_guidance(2,id);
+hr = interp_guidance(3,id);
+
 
 %% Function Fit
 
@@ -56,19 +75,16 @@ Vz_f = @(x) (vel_info_mpcc(4)-vel_info_mpcc(3))*x + vel_info_mpcc(3);
 dpsi_f = @(x) um*x;
 
 %% Compute Initial Guess
-sz = size(guidance,2);
-[~, id] = min(vecnorm(guidance(1:3,:) - init_cond(1:3)*ones(1,sz)));
-hr = guidance(3,id);
-idn = min(sz, id+N-1);
-x_guess = [guidance(1:4,id:idn),zeros(4,N-(idn-id+1));
-           guidance(3,id:idn),zeros(1,N-(idn-id+1))]; % 5*N
+x_guess = [interp_guidance(1:2,id:id+N-1) + (init_cond(1:2)-[xr;yr])*ones(1,N); % [x y]
+           interp_guidance(3:4,id:id+N-1); % [h psi]
+           interp_guidance(3, id:id+N-1)]; % let eta = h
 u_guess = [0.5*ones(1,N);
-           [guidance(3,id:idn),zeros(1,N-(idn-id+1))]/psi_dot_m;
-           Vz*ones(1,N)]; % 3*N
+           interp_guidance(5,id:id+N-1)/um]; % ds da
+v_guess = Vz*ones(1,N); % 1*N
 
 %% MPC Formulation
 
-Q = diag([100, 100, 200]);
+Q = diag([100, 100, 100]);
 R = diag([10, 10, 10]);
 q_eta = 50;
 
@@ -76,11 +92,13 @@ Prob = casadi.Opti();
 
 % --- define optimization variables ---
 X = Prob.variable(5, N); % [x, y, h, psi, eta]
-U = Prob.variable(3, N);   % [ds, da, v]
+U = Prob.variable(2, N); % [ds, da]
+V = Prob.variable(1, N); % eta
 
 % --- set initial guess from control --- 
-Prob.set_initial(X, x_guess);
+% Prob.set_initial(X(1:4,:), x_guess(1:4,:));
 Prob.set_initial(U, u_guess);
+Prob.set_initial(V, v_guess);
 
 % --- calculate objective --- 
 objective = 0;
@@ -91,8 +109,8 @@ for i = 2:N
     es_c = sin(gamma)*(X(1,i) - fx(X(5,i))) - cos(gamma)*(X(2,i) - fy(X(5,i)));
     es_h = X(3,i) - X(5,i);
 
-    du = U(1:2,i) - U(1:2,i-1);
-    dv = U(3,i) - U(3,i-1);
+    du = U(:,i) - U(:,i-1);
+    dv = V(i) - V(i-1);
     objective = objective + [es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
                           + q_eta * X(5,i) ...
                           + [du; dv]'* R *[du; dv];
@@ -101,49 +119,78 @@ Prob.minimize(objective)
 
 % --- define constraints ---
 Prob.subject_to(X(:,1) == [init_cond; hr]);
-Prob.subject_to(U(1:2,1) == init_dsda);
+Prob.subject_to(U(:,1) == init_dsda);
 Prob.subject_to(Au*U(:,N)<=bu);
+Prob.subject_to(Av*V(N)<=bv);
 
 for i = 1:N-1
     Prob.subject_to(Au*U(:,i)<=bu);
+    Prob.subject_to(Av*V(i)<=bv);
+    Prob.subject_to(As*((U(:,i+1)-U(:,i))/Ts)<=bs);
+
     if i > ceil(h0/Ts/(Vz+wind_dis(3))) % if landed at ground, no wind disturbance
         Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh_f(U(1,i)) * cos(X(4,i));
                                                   Vh_f(U(1,i)) * sin(X(4,i));
                                                   - (Vz_f(U(1,i)) + wind_dis(3));
                                                   dpsi_f(U(2,i));
-                                                  -U(3,i)]);
+                                                  -V(i)]);
     else
         Prob.subject_to(X(:,i+1) == X(:,i) + Ts* [Vh_f(U(1,i)) * cos(X(4,i)) + wx(X(3,i)) + wind_dis(1);
                                                   Vh_f(U(1,i)) * sin(X(4,i)) + wy(X(3,i)) + wind_dis(2);
                                                   - (Vz_f(U(1,i)) + wind_dis(3));
                                                   dpsi_f(U(2,i));
-                                                  -U(3,i)]);
+                                                  -V(i)]);
     end
 end
 
 % --- define solver ---
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
-sol = Prob.solve();
 
 % --- output ---
-flag = sol.stats.success;
-if flag
-    xs = sol.value(X);
-    us = sol.value(U);
-    control = [xs(3,1:N);
-               us(1,1:N) - us(2,1:N)/2;
-               us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
-else
-    disp("MPC Solution not found")
-    control = zeros(3,N);
-end
+sol = Prob.solve();
 
-%% plot
+xs = sol.value(X);
+us = sol.value(U);
+control = [xs(3,1:N);
+           us(1,1:N) - us(2,1:N)/2;
+           us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
+
 hold on
 grid on
 scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
 plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
+scatter3(init_cond(2), init_cond(1), init_cond(3),'b', 'filled')
 
+% scatter3(x_guess(2,:),x_guess(1,:),x_guess(3,:),5,'k')
+% scatter3(interp_guidance(2,id), interp_guidance(1,id), interp_guidance(3,id), 'r', 'filled')
+% scatter3(interp_guidance(2,:), interp_guidance(1,:), interp_guidance(3,:), 'm')
+% axis equal
+flag = true;
+
+
+% try
+%     sol = Prob.solve();
+% 
+%     xs = sol.value(X);
+%     us = sol.value(U);
+%     control = [xs(3,1:N);
+%                us(1,1:N) - us(2,1:N)/2;
+%                us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
+% 
+%     hold on
+%     grid on
+%     scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
+%     plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
+% 
+%     flag = true;
+% 
+% catch
+%     disp("WARNING! MPC Solution not found!")
+%     flag = false;
+%     control = zeros(3,N);
+% end
+
+%%
 toc
 text(init_cond(2)+10, init_cond(1), num2str(toc))
 end

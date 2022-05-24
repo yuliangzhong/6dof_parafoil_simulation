@@ -1,7 +1,8 @@
 % guidance guess: go straight to the origin
 function guidance0 = GuidanceGuess(N, init_pos, init_rpy, vel_info)
     h = -init_pos(3);
-    theta = atan2(0-init_pos(2), 0-init_pos(1));
+%     theta = atan2(0-init_pos(2), 0-init_pos(1));
+    theta = init_rpy(3);
     Vh = vel_info(2);
     Vz = vel_info(3);
     dt = h/Vz/(N-1);
