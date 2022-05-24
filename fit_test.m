@@ -17,24 +17,30 @@ scatter(heights, wind_profile_hat(2,:),'g')
 h0s = linspace(10, 0, 10);
 % h0s = linspace(100, 10, 10);
 
+dh = mpcc_Ts*(vel_info(3)+0);
+
 for i = 1:10
     % set break point here, check fitting result
     h0 = h0s(i);
-    h_max = h0+10; h_min = max(-5,h0-10);
-    extrap_heights_num = 100;
+
+    h_range = 1.1*time_horizon_N*dh;
+    h_max = h0 + h_range; 
+    h_min = max(0 - h_range, h0 - 2*h_range);
+    extrap_heights_num = (h_max - h_min)/dh+1;
     interp_heights = linspace(h_max, h_min, extrap_heights_num);
     interp_method = 'spline';
     if h0 < 10
-        interp_method = 'linear';
+    interp_method = 'linear'; % to avoid strange fitting near the ground
     end
     interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, interp_method, 'extrap');
                        interp1(guidance(3,:), guidance(2,:), interp_heights, interp_method, 'extrap');
-                       interp_heights];
+                       interp_heights;
+                       interp1(guidance(3,:), guidance(4,:), interp_heights, interp_method, 'extrap');
+                       interp1(guidance(3,:), guidance(5,:), interp_heights, interp_method, 'extrap')];
+    
     interp_wind_pf = [interp1(heights, wind_profile_hat(1,:), interp_heights, 'linear', 'extrap');
                       interp1(heights, wind_profile_hat(2,:), interp_heights, 'linear', 'extrap')];
-    % [~, id] = min(vecnorm(interp_guidance(1:2,:) - init_cond(1:2)*ones(1,size(interp_guidance,2))));
-    % hr = interp_guidance(3,id);
-        
+
     % fx
     px = polyfit(interp_guidance(3,:), interp_guidance(1,:), 10);
     fx = @(x) px*[x.^10; x.^9; x.^8; x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,size(x,2))];

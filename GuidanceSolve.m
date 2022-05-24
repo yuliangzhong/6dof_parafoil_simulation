@@ -44,7 +44,7 @@ end
 %% Optimization Start
 
 lambda1 = 100;
-lambda2 = 100;
+% lambda2 = 100;
 
 Au = [1; -1];
 bu = [psi_dot_m; psi_dot_m];
@@ -70,7 +70,7 @@ catch
 end
 
 % costs and constraints
-cost = lambda1*(x(1,end)^2 + x(2,end)^2) + lambda2*(1-cos(x(3,end)-psi_d));
+cost = lambda1*(x(1,end)^2 + x(2,end)^2); %+ lambda2*(1-cos(x(3,end)-psi_d));
 
 % x1
 Prob.subject_to(x(:,1) == [x0; y0; psi_0]);
@@ -114,14 +114,14 @@ try
 
     % for debugging / tuning
     cost1 = lambda1*(xs(1,end)^2 + xs(2,end)^2);
-    cost2 = lambda2*(1-cos(xs(3,end)-psi_d));
+%     cost2 = lambda2*(1-cos(xs(3,end)-psi_d));
     cost3 = 0;
     for i = 1:N-1
     % u2~uN
         cost3 = cost3 + us(i+1)^2*dt;
     end
-    disp([cost1, cost2, cost3])
-
+%     disp([cost1, cost2, cost3])
+    disp([cost1, cost3])
     flag = true;
 
 catch

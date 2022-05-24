@@ -4,7 +4,7 @@ tic
 
 %% Parameters Definition
 
-delta_s_dot = 0.5;
+delta_s_dot = 0.6;
 
 h0 = init_cond(3);
 Vz = vel_info(3);
@@ -75,16 +75,16 @@ Vz_f = @(x) (vel_info_mpcc(4)-vel_info_mpcc(3))*x + vel_info_mpcc(3);
 dpsi_f = @(x) um*x;
 
 %% Compute Initial Guess
-x_guess = [interp_guidance(1:2,id:id+N-1) + (init_cond(1:2)-[xr;yr])*ones(1,N); % [x y]
-           interp_guidance(3:4,id:id+N-1); % [h psi]
-           interp_guidance(3, id:id+N-1)]; % let eta = h
+% x_guess = [interp_guidance(1:2,id:id+N-1) + (init_cond(1:2)-[xr;yr])*ones(1,N); % [x y]
+%            interp_guidance(3:4,id:id+N-1); % [h psi]
+%            interp_guidance(3, id:id+N-1)]; % let eta = h
 u_guess = [0.5*ones(1,N);
            interp_guidance(5,id:id+N-1)/um]; % ds da
 v_guess = Vz*ones(1,N); % 1*N
 
 %% MPC Formulation
 
-Q = diag([100, 100, 100]);
+Q = diag([1000, 1000, 10]);
 R = diag([10, 10, 10]);
 q_eta = 50;
 
@@ -97,8 +97,8 @@ V = Prob.variable(1, N); % eta
 
 % --- set initial guess from control --- 
 % Prob.set_initial(X(1:4,:), x_guess(1:4,:));
-Prob.set_initial(U, u_guess);
-Prob.set_initial(V, v_guess);
+% Prob.set_initial(U, u_guess);
+% Prob.set_initial(V, v_guess);
 
 % --- calculate objective --- 
 objective = 0;

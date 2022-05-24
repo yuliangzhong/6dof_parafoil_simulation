@@ -25,14 +25,14 @@ xi = 0.0* [randn();
 % compute delta_w for simulation
 delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
-b_w = 18 * 0.0251;
+b_w = 12 * 0.0251;
 ratios = [1, 1, 0.5];
 for i = 2:wind_pf_size
     delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
 end
 % tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
 
-mean(vecnorm(delta_ws(1:2,:)))
+a_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
 % hold on
 % plot(heights, delta_ws(1,:));
 % plot(heights, delta_ws(2,:));
@@ -139,7 +139,7 @@ psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 % pd_controller_freq = 10; % [Hz]
 
 %% MPCC Tracker
-time_horizon_N = 50; % 100 is enough
+time_horizon_N = 50;
 mpcc_freq = 1; % [Hz]
 mpcc_Ts = 0.05; % [s]
 mpcc_ctrl_freq = 10; % [Hz]
