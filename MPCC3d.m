@@ -84,7 +84,7 @@ v_guess = Vz*ones(1,N); % 1*N
 
 %% MPC Formulation
 
-Q = diag([1000, 1000, 10]);
+Q = diag([1000, 100, 10]);
 R = diag([10, 10, 10]);
 q_eta = 50;
 
@@ -97,8 +97,8 @@ V = Prob.variable(1, N); % eta
 
 % --- set initial guess from control --- 
 % Prob.set_initial(X(1:4,:), x_guess(1:4,:));
-% Prob.set_initial(U, u_guess);
-% Prob.set_initial(V, v_guess);
+Prob.set_initial(U, u_guess);
+Prob.set_initial(V, v_guess);
 
 % --- calculate objective --- 
 objective = 0;
@@ -112,8 +112,8 @@ for i = 2:N
     du = U(:,i) - U(:,i-1);
     dv = V(i) - V(i-1);
     objective = objective + [es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
-                          + q_eta * X(5,i) ...
-                          + [du; dv]'* R *[du; dv];
+                          + q_eta * X(5,i);
+%                           + [du; dv]'* R *[du; dv];
 end
 Prob.minimize(objective)
 

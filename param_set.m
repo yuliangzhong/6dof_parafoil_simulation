@@ -139,9 +139,9 @@ guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame);
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 
 %% MPCC Tracker
-time_horizon_N = 50;
+time_horizon_N = 20;
 mpcc_freq = 1; % [Hz]
-mpcc_Ts = 0.05; % [s]
+mpcc_Ts = 0.25; % [s]
 mpcc_ctrl_freq = 10; % [Hz]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
 warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings in mpcc

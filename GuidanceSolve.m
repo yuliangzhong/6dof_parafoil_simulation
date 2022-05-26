@@ -54,20 +54,25 @@ x = Prob.variable(3, N);
 u = Prob.variable(1, N);
 
 % set initial guess from guidance guess
-try
-    x_guess = [x0; y0; psi_0]*ones(1,N);
-    u_guess = zeros(1,N);
-    for i = 1:N-1
-        u_guess(i) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
-        x_guess(:,i+1) = x_guess(:,i) + dt*[(Vhs(i)*cos(x_guess(3,i))+Vhs(i+1)*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
-                                            (Vhs(i)*sin(x_guess(3,i))+Vhs(i+1)*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
-                                            u_guess(i)];
-    end
-    u_guess(N) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(N),'spline', 'extrap');
-    Prob.set_initial(x, x_guess);
-    Prob.set_initial(u, u_guess);
-catch
+if sum(guidance_guess,'all') == 0
     disp("WARNING! Solving guidance without initial guess!!")
+else
+    try
+        x_guess = [x0; y0; psi_0]*ones(1,N);
+        u_guess = zeros(1,N);
+        for i = 1:N-1
+            u_guess(i) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
+            x_guess(:,i+1) = x_guess(:,i) + dt*[(Vhs(i)*cos(x_guess(3,i))+Vhs(i+1)*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
+                                                (Vhs(i)*sin(x_guess(3,i))+Vhs(i+1)*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
+                                                u_guess(i)];
+        end
+        u_guess(N) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(N),'spline', 'extrap');
+        Prob.set_initial(x, x_guess);
+        Prob.set_initial(u, u_guess);
+    catch
+        disp("ERROR! Guidance guess should be interpolable!!")
+        disp("WARNING! Solving guidance without initial guess!!")
+    end
 end
 
 % costs and constraints
