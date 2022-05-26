@@ -57,22 +57,24 @@ u = Prob.variable(1, N);
 if sum(guidance_guess,'all') == 0
     disp("WARNING! Solving guidance without initial guess!!")
 else
-    try
+%     try
         x_guess = [x0; y0; psi_0]*ones(1,N);
-        u_guess = zeros(1,N);
+        u_guess = psi_dot_now*ones(1,N);
         for i = 1:N-1
-            u_guess(i) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
+            u_last = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
+            % u_guess should satisfy constraints!
+            u_guess(i+1) = max([min([u_last, psi_dot_m, u_guess(i)+psi_ddot_m*dt]), -psi_dot_m, u_guess(i)-psi_ddot_m*dt]);
+            % compute x_guess from forward Euler
             x_guess(:,i+1) = x_guess(:,i) + dt*[(Vhs(i)*cos(x_guess(3,i))+Vhs(i+1)*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
                                                 (Vhs(i)*sin(x_guess(3,i))+Vhs(i+1)*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
                                                 u_guess(i)];
         end
-        u_guess(N) = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(N),'spline', 'extrap');
         Prob.set_initial(x, x_guess);
         Prob.set_initial(u, u_guess);
-    catch
-        disp("ERROR! Guidance guess should be interpolable!!")
-        disp("WARNING! Solving guidance without initial guess!!")
-    end
+%     catch
+%         disp("ERROR! Guidance guess should be interpolable!!")
+%         disp("WARNING! Solving guidance without initial guess!!")
+%     end
 end
 
 % costs and constraints
@@ -108,7 +110,7 @@ Prob.minimize(cost)
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 
 % solve the guidance problem & give output
-try
+% try
     sol = Prob.solve();
 
     xs = sol.value(x);
@@ -129,11 +131,11 @@ try
     disp([cost1, cost2, cost3])
     flag = true;
 
-catch
-    disp("ERROR! Guidance solver failed!!")
-    flag = false;
-    guidance = zeros(5, N);
-end
+% catch
+%     disp("ERROR! Guidance solver failed!!")
+%     flag = false;
+%     guidance = zeros(5, N);
+% end
 
 toc
 text(init_cond(2), init_cond(1), num2str(toc))

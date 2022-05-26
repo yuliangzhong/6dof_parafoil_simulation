@@ -1,10 +1,8 @@
-function [flag, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
+function [flag, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, delta_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
 
 tic
 
 %% Parameters Definition
-
-delta_s_dot = 0.6;
 
 h0 = init_cond(3);
 Vz = vel_info(3);
@@ -16,21 +14,22 @@ Au = [1, 0.5;
 bu = [1; 1; 0; 0];
 Av = [1; -1];
 bv = [2*Vz; 0];
-As = [1, 0;
-      -1,0;
-      0, 1;
-      0,-1];
-bs = delta_s_dot*[1; 1; 2; 2];
+% As = [1, 0;
+%       -1,0;
+%       0, 1;
+%       0,-1];
+As = Au;
+bs = 1.05*delta_dot_m*[1; 1; 1; 1];
 
 %% interpolate guidance & wind profile
 dh = Ts*(Vz+wind_dis(3));
-h_range = 1.1*N*dh;
+h_range = 1.5*N*dh;
 h_max = h0 + h_range; 
 h_min = max(0 - h_range, h0 - 2*h_range);
 extrap_heights_num = (h_max - h_min)/dh+1;
 interp_heights = linspace(h_max, h_min, extrap_heights_num);
 interp_method = 'spline';
-if h0 < 10
+if h0 < 2*h_range
     interp_method = 'linear'; % to avoid strange fitting near the ground
 end
 interp_guidance = [interp1(guidance(3,:), guidance(1,:), interp_heights, interp_method, 'extrap');
@@ -43,8 +42,6 @@ interp_wind_pf = [interp1(heights, wind_profile_hat(1,:), interp_heights, 'linea
                   interp1(heights, wind_profile_hat(2,:), interp_heights, 'linear', 'extrap')];
 
 [~, id] = min(vecnorm(interp_guidance(1:3,:) - init_cond(1:3)*ones(1,size(interp_guidance,2))));
-xr = interp_guidance(1,id);
-yr = interp_guidance(2,id);
 hr = interp_guidance(3,id);
 
 
@@ -74,14 +71,6 @@ Vh_f = @(x) (vel_info_mpcc(2)-vel_info_mpcc(1))*x + vel_info_mpcc(1);
 Vz_f = @(x) (vel_info_mpcc(4)-vel_info_mpcc(3))*x + vel_info_mpcc(3);
 dpsi_f = @(x) um*x;
 
-%% Compute Initial Guess
-% x_guess = [interp_guidance(1:2,id:id+N-1) + (init_cond(1:2)-[xr;yr])*ones(1,N); % [x y]
-%            interp_guidance(3:4,id:id+N-1); % [h psi]
-%            interp_guidance(3, id:id+N-1)]; % let eta = h
-u_guess = [0.5*ones(1,N);
-           interp_guidance(5,id:id+N-1)/um]; % ds da
-v_guess = Vz*ones(1,N); % 1*N
-
 %% MPC Formulation
 
 Q = diag([1000, 100, 10]);
@@ -95,10 +84,31 @@ X = Prob.variable(5, N); % [x, y, h, psi, eta]
 U = Prob.variable(2, N); % [ds, da]
 V = Prob.variable(1, N); % eta
 
-% --- set initial guess from control --- 
-% Prob.set_initial(X(1:4,:), x_guess(1:4,:));
-Prob.set_initial(U, u_guess);
-Prob.set_initial(V, v_guess);
+% % --- set initial guess from control --- 
+% x_guess = [init_cond; hr]*ones(1,N);
+% u_guess = [0.5*ones(1,N);
+%            interp_guidance(5,id:id+N-1)/um]; % ds da
+% v_guess = (Vz+wind_dis(3))*ones(1,N); % 1*N
+% 
+% for i = 1:N-1
+%     if i > ceil(h0/Ts/(Vz+wind_dis(3))) % if landed at ground, no wind disturbance
+%         x_guess(:,i+1) = x_guess(:,i) + Ts* [Vh_f(u_guess(1,i)) * cos(x_guess(4,i));
+%                                              Vh_f(u_guess(1,i)) * sin(x_guess(4,i));
+%                                              - (Vz_f(u_guess(1,i)) + wind_dis(3));
+%                                              dpsi_f(u_guess(2,i));
+%                                              -v_guess(i)];
+%     else
+%         x_guess(:,i+1) = x_guess(:,i) + Ts* [Vh_f(u_guess(1,i)) * cos(x_guess(4,i)) + wx(x_guess(3,i)) + wind_dis(1);
+%                                              Vh_f(u_guess(1,i)) * sin(x_guess(4,i)) + wy(x_guess(3,i)) + wind_dis(2);
+%                                              - (Vz_f(u_guess(1,i)) + wind_dis(3));
+%                                              dpsi_f(u_guess(2,i));
+%                                              -v_guess(i)];        
+%     end
+% end
+% 
+% % Prob.set_initial(X, x_guess);
+% Prob.set_initial(U, u_guess);
+% Prob.set_initial(V, v_guess);
 
 % --- calculate objective --- 
 objective = 0;
@@ -109,11 +119,8 @@ for i = 2:N
     es_c = sin(gamma)*(X(1,i) - fx(X(5,i))) - cos(gamma)*(X(2,i) - fy(X(5,i)));
     es_h = X(3,i) - X(5,i);
 
-    du = U(:,i) - U(:,i-1);
-    dv = V(i) - V(i-1);
     objective = objective + [es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
                           + q_eta * X(5,i);
-%                           + [du; dv]'* R *[du; dv];
 end
 Prob.minimize(objective)
 

@@ -35,6 +35,7 @@ end
 avg_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
 max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
 disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
+disp("======================================")
 % hold on
 % plot(heights, delta_ws(1,:));
 % plot(heights, delta_ws(2,:));
@@ -139,7 +140,7 @@ guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame);
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 
 %% MPCC Tracker
-time_horizon_N = 20;
+time_horizon_N = 20; % < 50
 mpcc_freq = 1; % [Hz]
 mpcc_Ts = 0.25; % [s]
 mpcc_ctrl_freq = 10; % [Hz]
