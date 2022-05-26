@@ -3,8 +3,8 @@ gravity_acc = + 9.81; % z-down
 
 %% Wind Profile and Wind Gust Dynamics
 vel_at6m = 2 * 0.5144; % wind velocity at 6m, absolute value, [knot]->[m/s]
-wind_gust_max = 2.4 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
-theta = 28; % [deg] constant
+wind_gust_max = 4 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
+theta = 247; % [deg] constant
 wind_pf_size = 3000;
 height_lim = 150; % h \in (0, height_lim]
 
@@ -32,7 +32,9 @@ for i = 2:wind_pf_size
 end
 % tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
 
-a_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
+avg_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
+max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
+disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
 % hold on
 % plot(heights, delta_ws(1,:));
 % plot(heights, delta_ws(2,:));
@@ -130,13 +132,11 @@ R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
             diag([(row_pitch_accu/180*pi)^2, (row_pitch_accu/180*pi)^2, (yaw_accu/180*pi)^2])); % 9*9
 
 %% Guidance
-psi_d = pi; % desired landing orientation
+psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
 
 guidance_horizon_N = 200;
-guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame, init_rpy, vel_info);
+guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame);
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
-
-% pd_controller_freq = 10; % [Hz]
 
 %% MPCC Tracker
 time_horizon_N = 50;
