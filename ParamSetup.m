@@ -98,7 +98,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
-init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [init_xy_pos; -33]; % x-North, z-down, y-East
 init_rpy = [0; 0.006; -10/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
@@ -135,7 +135,7 @@ R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
 %% Guidance
 psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
 
-guidance_horizon_N = 200;
+guidance_horizon_N = 100;
 guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame);
 psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 
@@ -147,13 +147,13 @@ mpcc_ctrl_freq = 10; % [Hz]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
 warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings in mpcc
 
-%% Motor Model
-% delta_s: 2nd order response
-wd = pi/1.35; % omega_d = pi/tp
-Mp = abs(2.86574-3.35184)/abs(3.35184-4.8196); % Mp = |c_peak - c_inf| / |c_start - c_inf|
-zeta = sqrt((log(Mp)/pi)^2/(1+(log(Mp)/pi)^2));
-wn = wd / sqrt(1-zeta^2); % omega_n = omega_d / sqrt(1-zeta^2)
-
-% delta_a: 1st order response
-Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
+% %% Motor Model
+% % delta_s: 2nd order response
+% wd = pi/1.35; % omega_d = pi/tp
+% Mp = abs(2.86574-3.35184)/abs(3.35184-4.8196); % Mp = |c_peak - c_inf| / |c_start - c_inf|
+% zeta = sqrt((log(Mp)/pi)^2/(1+(log(Mp)/pi)^2));
+% wn = wd / sqrt(1-zeta^2); % omega_n = omega_d / sqrt(1-zeta^2)
+% 
+% % delta_a: 1st order response
+% Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
 

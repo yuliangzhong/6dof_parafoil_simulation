@@ -150,6 +150,6 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 
 %%
 toc
-text(init_cond(2)+10, init_cond(1), init_cond(3), num2str(toc))
+text(init_cond(2)+10, init_cond(1), init_cond(3), num2str(round(toc,2)))
 
 end

@@ -138,7 +138,7 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 % end
 
 toc
-text(init_cond(2), init_cond(1), num2str(toc))
+text(init_cond(2), init_cond(1), num2str(round(toc,2)))
 
 end
 
