@@ -25,5 +25,5 @@ init_cond = [x0; y0; h0; psi0];
 init_dsda = [0.5; 0];
 
 
-[flag, control] = MPCC3d(time_horizon_N, mpcc_Ts, vel_info, vel_info_mpcc, psi_dot_m, ...
+[flag, control] = MPCC3d(time_horizon_N, mpcc_Ts, vel_info, vel_info_mpcc, psi_dot_m, delta_dot_m, ...
                   init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis);

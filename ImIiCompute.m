@@ -1,3 +1,4 @@
+% Compute apparent mass & inertia
 function [Im, Ii] = ImIiCompute(a, b, c, t)
 
     a_bar = a/b;
