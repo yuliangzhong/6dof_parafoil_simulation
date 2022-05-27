@@ -16,7 +16,8 @@ if ifUseCurrentState
     phi_t = atan2(C_IB(3,2), C_IB(3,3));
     theta_t = atan2(-C_IB(3,1), sqrt(C_IB(3,2)^2) + C_IB(3,3)^2);
     psi_dot_now = B_w_IB(2)*sin(phi_t)/cos(theta_t) + B_w_IB(3)*cos(phi_t)/cos(theta_t);
-    guidance_last = guidance;
+    guidance_last = out.guidance.signals.values(:,:,end);
+
 else
     psi_dot_now = 0;
     init_cond = [init_pos_in_inertial_frame(1:2); 100; 0];

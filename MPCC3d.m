@@ -14,10 +14,6 @@ Au = [1, 0.5;
 bu = [1; 1; 0; 0];
 Av = [1; -1];
 bv = [2*Vz; 0];
-% As = [1, 0;
-%       -1,0;
-%       0, 1;
-%       0,-1];
 As = Au;
 bs = 1.05*delta_dot_m*[1; 1; 1; 1];
 
@@ -66,7 +62,7 @@ wy = @(x) pwy*[x.^10; x.^9; x.^8; x.^7; x.^6; x.^5; x.^4; x.^3; x.^2; x; ones(1,
 
 % wx, wy are valid only when h>0!!
 
-% assume linear control model
+% linear control model assumption
 Vh_f = @(x) (vel_info_mpcc(2)-vel_info_mpcc(1))*x + vel_info_mpcc(1);
 Vz_f = @(x) (vel_info_mpcc(4)-vel_info_mpcc(3))*x + vel_info_mpcc(3);
 dpsi_f = @(x) um*x;
@@ -74,7 +70,6 @@ dpsi_f = @(x) um*x;
 %% MPC Formulation
 
 Q = diag([1000, 100, 10]);
-R = diag([10, 10, 10]);
 q_eta = 50;
 
 Prob = casadi.Opti();
@@ -83,32 +78,6 @@ Prob = casadi.Opti();
 X = Prob.variable(5, N); % [x, y, h, psi, eta]
 U = Prob.variable(2, N); % [ds, da]
 V = Prob.variable(1, N); % eta
-
-% % --- set initial guess from control --- 
-% x_guess = [init_cond; hr]*ones(1,N);
-% u_guess = [0.5*ones(1,N);
-%            interp_guidance(5,id:id+N-1)/um]; % ds da
-% v_guess = (Vz+wind_dis(3))*ones(1,N); % 1*N
-% 
-% for i = 1:N-1
-%     if i > ceil(h0/Ts/(Vz+wind_dis(3))) % if landed at ground, no wind disturbance
-%         x_guess(:,i+1) = x_guess(:,i) + Ts* [Vh_f(u_guess(1,i)) * cos(x_guess(4,i));
-%                                              Vh_f(u_guess(1,i)) * sin(x_guess(4,i));
-%                                              - (Vz_f(u_guess(1,i)) + wind_dis(3));
-%                                              dpsi_f(u_guess(2,i));
-%                                              -v_guess(i)];
-%     else
-%         x_guess(:,i+1) = x_guess(:,i) + Ts* [Vh_f(u_guess(1,i)) * cos(x_guess(4,i)) + wx(x_guess(3,i)) + wind_dis(1);
-%                                              Vh_f(u_guess(1,i)) * sin(x_guess(4,i)) + wy(x_guess(3,i)) + wind_dis(2);
-%                                              - (Vz_f(u_guess(1,i)) + wind_dis(3));
-%                                              dpsi_f(u_guess(2,i));
-%                                              -v_guess(i)];        
-%     end
-% end
-% 
-% % Prob.set_initial(X, x_guess);
-% Prob.set_initial(U, u_guess);
-% Prob.set_initial(V, v_guess);
 
 % --- calculate objective --- 
 objective = 0;
@@ -154,50 +123,33 @@ end
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 
 % --- output ---
-sol = Prob.solve();
-
-xs = sol.value(X);
-us = sol.value(U);
-control = [xs(3,1:N);
-           us(1,1:N) - us(2,1:N)/2;
-           us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
-
-hold on
-grid on
-scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
-plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
-scatter3(init_cond(2), init_cond(1), init_cond(3),'b', 'filled')
-
-% scatter3(x_guess(2,:),x_guess(1,:),x_guess(3,:),5,'k')
-% scatter3(interp_guidance(2,id), interp_guidance(1,id), interp_guidance(3,id), 'r', 'filled')
-% scatter3(interp_guidance(2,:), interp_guidance(1,:), interp_guidance(3,:), 'm')
-% axis equal
-flag = true;
-
-
 % try
-%     sol = Prob.solve();
-% 
-%     xs = sol.value(X);
-%     us = sol.value(U);
-%     control = [xs(3,1:N);
-%                us(1,1:N) - us(2,1:N)/2;
-%                us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
-% 
-%     hold on
-%     grid on
-%     scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
-%     plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
-% 
-%     flag = true;
-% 
+    
+    sol = Prob.solve();
+    
+    xs = sol.value(X);
+    us = sol.value(U);
+    control = [xs(3,1:N);
+               us(1,1:N) - us(2,1:N)/2;
+               us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
+    
+    hold on
+    grid on
+    scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
+    plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
+    scatter3(init_cond(2), init_cond(1), init_cond(3),'b', 'filled')
+    
+    flag = true;
+
 % catch
 %     disp("WARNING! MPC Solution not found!")
 %     flag = false;
 %     control = zeros(3,N);
 % end
 
+
 %%
 toc
-text(init_cond(2)+10, init_cond(1), num2str(toc))
+text(init_cond(2)+10, init_cond(1), init_cond(3), num2str(toc))
+
 end

@@ -1,6 +1,6 @@
 % In this function, define the safezone and initial position from reality!
 % The format of safezone constraints are:
-% at height h, Ax * [x;y] <= bx --> [Ax, bx, h] = Axbxh
+% at height h, Ax * [x;y] <= bx --> [Ax, bx, h] =def= Axbxh
 
 function [Axbxh, init_xy_pos] = SafeZoneCompute(if_plot)
 % For now, assume the safe zone is a parallelogram ABCD. The origin is O
@@ -53,7 +53,5 @@ if if_plot
     xlabel('East --> y') 
     ylabel('North --> x') 
 end
-
-
 
 end
