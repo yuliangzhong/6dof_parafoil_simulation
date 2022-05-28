@@ -69,7 +69,7 @@ dpsi_f = @(x) um*x;
 
 %% MPC Formulation
 
-Q = diag([1000, 100, 10]);
+Q = diag([100, 100, 100]);
 q_eta = 50;
 
 Prob = casadi.Opti();
@@ -84,8 +84,8 @@ objective = 0;
 
 for i = 2:N
     gamma = atan2(-dfy(X(5,i)), -dfx(X(5,i))); % since eta is decreasing!
-    es_l = -cos(gamma)*(X(1,i) - fx(X(5,i))) - sin(gamma)*(X(2,i) - fy(X(5,i)));
     es_c = sin(gamma)*(X(1,i) - fx(X(5,i))) - cos(gamma)*(X(2,i) - fy(X(5,i)));
+    es_l = -cos(gamma)*(X(1,i) - fx(X(5,i))) - sin(gamma)*(X(2,i) - fy(X(5,i)));
     es_h = X(3,i) - X(5,i);
 
     objective = objective + [es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
@@ -135,10 +135,11 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
     
     hold on
     grid on
-    scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
+%     scatter3(xs(2,:), xs(1,:), xs(3,:), 'b','filled')
+%     scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
     plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
     scatter3(init_cond(2), init_cond(1), init_cond(3),'b', 'filled')
-    
+%     plot3(interp_guidance(2,id-1:id+N), interp_guidance(1,id-1:id+N), interp_heights(id-1:id+N), 'r')
     flag = true;
 
 % catch

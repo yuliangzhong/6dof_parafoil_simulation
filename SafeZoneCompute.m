@@ -50,8 +50,10 @@ if if_plot
               [points(1,i), points(1,i), points(1,i+1), points(1,i+1)], ...
               [h(i), 0, 0, h(i)], 'b','FaceAlpha', .3);
     end 
+    set(gca,'FontSize',20);
     xlabel('East --> y') 
     ylabel('North --> x') 
+    zlabel('Height --> z')
 end
 
 end

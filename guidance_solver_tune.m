@@ -1,4 +1,4 @@
-ifUseCurrentState = 1;
+ifUseCurrentState = 0;
 
 if ifUseCurrentState
 
@@ -28,6 +28,6 @@ SafeZoneCompute(1) % for plot
 
 % tune guidacne
 [flag, guidance_tune] = GuidanceSolve(guidance_horizon_N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, Axbxh, guidance_last);
-plot3(guidance_tune(2,:),guidance_tune(1,:), guidance_tune(3,:))
+plot3(guidance_tune(2,:),guidance_tune(1,:), guidance_tune(3,:),'r')
 
 

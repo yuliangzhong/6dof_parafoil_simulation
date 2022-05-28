@@ -36,10 +36,24 @@ avg_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
 max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
 disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
 disp("======================================")
-% hold on
-% plot(heights, delta_ws(1,:));
-% plot(heights, delta_ws(2,:));
-% plot(heights, delta_ws(3,:));
+subplot(2,1,1)
+hold on
+plot(delta_ws(1,:), heights,'linewidth',1.5);
+plot(delta_ws(2,:), heights,'linewidth',1.5);
+plot(delta_ws(3,:), heights,'linewidth',1.5);
+set(gca,'FontSize',25);
+xlabel('wind gust [m/s]') 
+ylabel('height [m]') 
+legend('x-axis', 'y-axis', 'z-axis')
+subplot(2,1,2)
+hold on
+plot(wind_profile_hat(1,:), heights,'linewidth',1.5);
+plot(wind_profile_hat(2,:), heights,'linewidth',1.5);
+plot(wind_profile_hat(3,:), heights,'linewidth',1.5);
+set(gca,'FontSize',25);
+xlabel('wind profile [m/s]') 
+ylabel('height [m]') 
+legend('x-axis wind profile','y-axis wind profile','z-axis wind profile')
 
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error storage
 
@@ -98,7 +112,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
-init_pos_in_inertial_frame = [init_xy_pos; -33]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
 init_rpy = [0; 0.006; -10/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
