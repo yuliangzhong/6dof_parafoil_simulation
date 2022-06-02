@@ -110,7 +110,7 @@ Prob.minimize(cost)
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 
 % solve the guidance problem & give output
-try
+% try
     sol = Prob.solve();
 
     xs = sol.value(x);
@@ -131,15 +131,15 @@ try
     disp([cost1, cost2, cost3])
     flag = true;
 
-catch
-    disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    disp("ERROR! Guidance solver failed!!")
-    disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-    flag = false;
-    guidance = zeros(5, N);
-    
-end
+% catch
+%     disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+%     disp("ERROR! Guidance solver failed!!")
+%     disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+% 
+%     flag = false;
+%     guidance = zeros(5, N);
+%     
+% end
 
 toc
 text(init_cond(2), init_cond(1), num2str(round(toc,2)))
