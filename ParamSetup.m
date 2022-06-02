@@ -36,26 +36,10 @@ avg_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
 max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
 disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
 disp("======================================")
-subplot(2,1,1)
-hold on
-plot(delta_ws(1,:), heights,'linewidth',1.5);
-plot(delta_ws(2,:), heights,'linewidth',1.5);
-plot(delta_ws(3,:), heights,'linewidth',1.5);
-set(gca,'FontSize',25);
-xlabel('wind gust [m/s]') 
-ylabel('height [m]') 
-legend('x-axis', 'y-axis', 'z-axis')
-subplot(2,1,2)
-hold on
-plot(wind_profile_hat(1,:), heights,'linewidth',1.5);
-plot(wind_profile_hat(2,:), heights,'linewidth',1.5);
-plot(wind_profile_hat(3,:), heights,'linewidth',1.5);
-set(gca,'FontSize',25);
-xlabel('wind profile [m/s]') 
-ylabel('height [m]') 
-legend('x-axis wind profile','y-axis wind profile','z-axis wind profile')
 
-wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error storage
+ifPlotWindInfo = 1;
+
+wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
 
 % params from paper 14/16
 
@@ -171,3 +155,24 @@ warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings 
 % % delta_a: 1st order response
 % Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
 
+%% Plot
+if ifPlotWindInfo
+    subplot(2,1,1)
+    hold on
+    plot(delta_ws(1,:), heights,'linewidth',1.5);
+    plot(delta_ws(2,:), heights,'linewidth',1.5);
+    plot(delta_ws(3,:), heights,'linewidth',1.5);
+    set(gca,'FontSize',25);
+    xlabel('wind gust [m/s]') 
+    ylabel('height [m]') 
+    legend('x-axis', 'y-axis', 'z-axis')
+    subplot(2,1,2)
+    hold on
+    plot(wind_profile_hat(1,:), heights,'linewidth',1.5);
+    plot(wind_profile_hat(2,:), heights,'linewidth',1.5);
+    plot(wind_profile_hat(3,:), heights,'linewidth',1.5);
+    set(gca,'FontSize',25);
+    xlabel('wind profile [m/s]') 
+    ylabel('height [m]') 
+    legend('x-axis wind profile','y-axis wind profile','z-axis wind profile')
+end

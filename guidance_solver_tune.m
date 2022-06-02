@@ -1,4 +1,4 @@
-ifUseCurrentState = 0;
+ifUseCurrentState = 1;
 
 if ifUseCurrentState
 
