@@ -1,7 +1,7 @@
 % solving guidance by casadi + ipopt
 % with safety constraints
 
-function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, Axbxh, guidance_guess)
+function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, wind_dis, Axbxh, guidance_guess)
 
 tic
 
@@ -34,6 +34,13 @@ Vhs = Vh(hs);
 
 Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
       interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
+
+%% Combine wind err with wind profile
+id_p = floor(N*0.3);
+hp = hs(id_p);
+ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
+Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios;
+
 
 %% Compute Safezone Constraints
 inds = zeros(size(Axbxh,1),1); % turn h to index
@@ -91,7 +98,11 @@ for i = 1:N-1
                                              (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
                                              u(i)]);
     % u2~uN
-    cost = cost + u(i+1)^2*dt;
+
+    cost = cost + (i/N)^2*u(i+1)^2*dt;
+%     cost = cost + u(i+1)^2*dt;
+%     cost = cost - 10*(i/N)*cos(x(3,i+1)-psi_d);
+
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
     % u2-u1 ~ uN-uN-1
     Prob.subject_to(u(i+1)-u(i) <= dt*psi_ddot_m)
@@ -110,7 +121,7 @@ Prob.minimize(cost)
 Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 
 % solve the guidance problem & give output
-% try
+try
     sol = Prob.solve();
 
     xs = sol.value(x);
@@ -129,17 +140,22 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
         cost3 = cost3 + us(i+1)^2*dt;
     end
     disp([cost1, cost2, cost3])
-    flag = true;
+    if cost1>100
+        flag = false;
+        disp("bad guidance!")
+    else
+        flag = true;
+    end
 
-% catch
-%     disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-%     disp("ERROR! Guidance solver failed!!")
-%     disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-% 
-%     flag = false;
-%     guidance = zeros(5, N);
-%     
-% end
+catch
+    disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    disp("ERROR! Guidance solver failed!!")
+    disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+    flag = false;
+    guidance = zeros(5, N);
+    
+end
 
 toc
 text(init_cond(2), init_cond(1), num2str(round(toc,2)))

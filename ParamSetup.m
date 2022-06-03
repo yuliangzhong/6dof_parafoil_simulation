@@ -25,7 +25,7 @@ xi = 0.0* [randn();
 % compute delta_w for simulation
 delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
-b_w = 12 * 0.0251;
+b_w = 24 * 0.0251;
 ratios = [1, 1, 0.5];
 for i = 2:wind_pf_size
     delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
@@ -37,7 +37,7 @@ max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
 disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
 disp("======================================")
 
-ifPlotWindInfo = 0;
+ifPlotWindInfo = 1;
 
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
 

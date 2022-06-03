@@ -69,7 +69,7 @@ dpsi_f = @(x) um*x;
 
 %% MPC Formulation
 
-Q = diag([100, 100, 100]);
+Q = diag([100, 100, 10]);
 q_eta = 50;
 
 Prob = casadi.Opti();
