@@ -37,7 +37,7 @@ max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
 disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
 disp("======================================")
 
-ifPlotWindInfo = 1;
+ifPlotWindInfo = 0;
 
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
 
