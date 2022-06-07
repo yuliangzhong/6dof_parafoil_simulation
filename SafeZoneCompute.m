@@ -34,6 +34,7 @@ init_xy_pos = PA+[5;5];
 
 % draw safezone constraints
 if if_plot
+    figure(2)
     hold on
     grid on
     xlim([-80,80])

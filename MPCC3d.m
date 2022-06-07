@@ -69,7 +69,7 @@ dpsi_f = @(x) um*x;
 
 %% MPC Formulation
 
-Q = diag([100, 100, 10]);
+Q = diag([100, 100, 100]);
 q_eta = 50;
 
 Prob = casadi.Opti();
@@ -135,11 +135,17 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
     
     hold on
     grid on
-%     scatter3(xs(2,:), xs(1,:), xs(3,:), 'b','filled')
-%     scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
-    plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
-    scatter3(init_cond(2), init_cond(1), init_cond(3),'b', 'filled')
+
+%     set(gca,'FontSize',25);
+%     scatter3(init_cond(2), init_cond(1), init_cond(3), 'r','filled')
 %     plot3(interp_guidance(2,id-1:id+N), interp_guidance(1,id-1:id+N), interp_heights(id-1:id+N), 'r')
+%     scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 'g', 'filled')
+%     scatter3(xs(2,2:end), xs(1,2:end), xs(3,2:end), 'b','filled')
+%     legend('initial position','reference','auxiliary states','MPCC planned trajectory')
+
+    scatter3(init_cond(2), init_cond(1), init_cond(3), 'r','filled')
+    plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
+
     flag = true;
 
 % catch

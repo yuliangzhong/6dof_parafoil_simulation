@@ -35,12 +35,11 @@ Vhs = Vh(hs);
 Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
       interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
-%% Combine wind err with wind profile
-id_p = floor(N*0.3);
-hp = hs(id_p);
-ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
-Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios;
-
+% %% Combine wind err with wind profile
+% id_p = floor(N*0.3);
+% hp = hs(id_p);
+% ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
+% Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios;
 
 %% Compute Safezone Constraints
 inds = zeros(size(Axbxh,1),1); % turn h to index
@@ -99,9 +98,7 @@ for i = 1:N-1
                                              u(i)]);
     % u2~uN
 
-    cost = cost + (i/N)^2*u(i+1)^2*dt;
-%     cost = cost + u(i+1)^2*dt;
-%     cost = cost - 10*(i/N)*cos(x(3,i+1)-psi_d);
+    cost = cost + u(i+1)^2*dt;
 
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
     % u2-u1 ~ uN-uN-1
@@ -146,6 +143,7 @@ try
     else
         flag = true;
     end
+%     flag = true;
 
 catch
     disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")

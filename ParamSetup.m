@@ -18,17 +18,14 @@ heights = linspace(1e-6, height_lim, wind_pf_size); % start from 0+ avoiding NaN
 dh = height_lim/wind_pf_size;
 wind_profile_hat = GetWindProfile(heights);
 
-xi = 0.0* [randn();
-           randn();
-           0]; % wind profile error at 200[m]
-
 % compute delta_w for simulation
 delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
-b_w = 24 * 0.0251;
-ratios = [1, 1, 0.5];
+b_w_xy = 24 * 0.0251;
+b_w_z = 6 * 0.0251;
+ratios = [b_w_xy, b_w_xy, b_w_z];
 for i = 2:wind_pf_size
-    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
+    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
 end
 % tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
 
@@ -140,7 +137,7 @@ psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 %% MPCC Tracker
 time_horizon_N = 20; % < 50
 mpcc_freq = 1; % [Hz]
-mpcc_Ts = 0.25; % [s]
+mpcc_Ts = 0.5; % [s]
 mpcc_ctrl_freq = 10; % [Hz]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
 warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings in mpcc
@@ -171,6 +168,10 @@ if ifPlotWindInfo
     plot(wind_profile_hat(1,:), heights,'linewidth',1.5);
     plot(wind_profile_hat(2,:), heights,'linewidth',1.5);
     plot(wind_profile_hat(3,:), heights,'linewidth',1.5);
+    wind_truth = delta_ws + wind_profile_hat;
+    plot(wind_truth(1,:), heights,'b','linewidth',1.5);
+    plot(wind_truth(2,:), heights,'r','linewidth',1.5);
+    plot(wind_truth(3,:), heights,'y','linewidth',1.5);
     set(gca,'FontSize',25);
     xlabel('wind profile [m/s]') 
     ylabel('height [m]') 
