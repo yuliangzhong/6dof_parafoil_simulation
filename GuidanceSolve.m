@@ -11,35 +11,42 @@ y0 = init_cond(2);
 h0 = init_cond(3);
 psi_0 = init_cond(4);
 
-%% Altitude Evolution
-ch = 1.225;
-cz = 2.256e-5;
-ce = 4.2559;
-cf = ce/2+1;
+% %% Altitude Evolution
+% ch = 1.225;
+% cz = 2.256e-5;
+% ce = 4.2559;
+% cf = ce/2+1;
+% 
+% % functions
+% rho = @(h) ch*(1-h*cz).^ce;
+% Vh0 = sqrt(rho(vel_info(1))*vel_info(2)^2/rho(h0));
+% Vz0 = sqrt(rho(vel_info(1))*vel_info(3)^2/rho(h0));
+% h = @(t) 1/cz*(ones(1,size(t,2)) - (cz*cf*Vz0*sqrt(rho(h0))/sqrt(ch)*t + (1-cz*h0)^cf*ones(1,size(t,2))).^(1/cf));
+% Vh = @(h) Vh0*sqrt(rho(h0)./rho(h));
+% 
+% % time gap
+% tf = sqrt(ch)/(cz*cf*Vz0*sqrt(rho(h0)))*(1-(1-cz*h0)^cf);
+% dt = tf/(N-1);
+% % time mesh
+% times = linspace(0, tf, N);
+% hs = h(times);
+% Vhs = Vh(hs);
+% disp(Vhs)
 
-% functions
-rho = @(h) ch*(1-h*cz).^ce;
-Vh0 = sqrt(rho(vel_info(1))*vel_info(2)^2/rho(h0));
-Vz0 = sqrt(rho(vel_info(1))*vel_info(3)^2/rho(h0));
-h = @(t) 1/cz*(ones(1,size(t,2)) - (cz*cf*Vz0*sqrt(rho(h0))/sqrt(ch)*t + (1-cz*h0)^cf*ones(1,size(t,2))).^(1/cf));
-Vh = @(h) Vh0*sqrt(rho(h0)./rho(h));
-
-% time gap
-tf = sqrt(ch)/(cz*cf*Vz0*sqrt(rho(h0)))*(1-(1-cz*h0)^cf);
+tf = h0/(vel_info(3)+wind_dis(3));
 dt = tf/(N-1);
-% time mesh
-times = linspace(0, tf, N);
-hs = h(times);
-Vhs = Vh(hs);
+hs = linspace(h0, 0, N);
+Vhs = vel_info(2)*ones(1,N);
+% disp(Vhs)
 
 Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
       interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
-% %% Combine wind err with wind profile
-% id_p = floor(N*0.3);
-% hp = hs(id_p);
-% ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
-% Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios;
+%% Combine wind err with wind profile
+id_p = floor(N*0.1);
+hp = hs(id_p);
+ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
+Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios;
 
 %% Compute Safezone Constraints
 inds = zeros(size(Axbxh,1),1); % turn h to index
@@ -99,6 +106,8 @@ for i = 1:N-1
     % u2~uN
 
     cost = cost + u(i+1)^2*dt;
+%     cost = cost + (i/N)^2*u(i+1)^2*dt;
+%     cost = cost + lambda2*(i/N)^2*(1-cos(x(3,end)-psi_d));
 
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
     % u2-u1 ~ uN-uN-1
@@ -137,7 +146,7 @@ try
         cost3 = cost3 + us(i+1)^2*dt;
     end
     disp([cost1, cost2, cost3])
-    if cost1>100
+    if cost1>400
         flag = false;
         disp("bad guidance!")
     else

@@ -1,4 +1,4 @@
-function [flag, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, delta_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
+function [flag, final_distance, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, delta_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
 
 tic
 
@@ -132,6 +132,12 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
     control = [xs(3,1:N);
                us(1,1:N) - us(2,1:N)/2;
                us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
+
+    gamma = atan2(-dfy(xs(5,end)), -dfx(xs(5,end))); % since eta is decreasing!
+    es_c = sin(gamma)*(xs(1,end) - fx(xs(5,end))) - cos(gamma)*(xs(2,end) - fy(xs(5,end)));
+    es_l = -cos(gamma)*(xs(1,end) - fx(xs(5,end))) - sin(gamma)*(xs(2,end) - fy(xs(5,end)));
+    es_h = xs(3,end) - xs(5,end);
+    final_distance = norm([es_c; es_l; es_h]);
     
     hold on
     grid on
@@ -152,6 +158,7 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
 %     disp("WARNING! MPC Solution not found!")
 %     flag = false;
 %     control = zeros(3,N);
+%     final_cost = -99999;
 % end
 
 
