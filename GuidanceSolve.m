@@ -5,48 +5,25 @@ function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, psi_ddo
 
 tic
 
-%% Parameters Reading
+%% Parameters Reading & Height Discretization
 x0 = init_cond(1);
 y0 = init_cond(2);
 h0 = init_cond(3);
 psi_0 = init_cond(4);
 
-% %% Altitude Evolution
-% ch = 1.225;
-% cz = 2.256e-5;
-% ce = 4.2559;
-% cf = ce/2+1;
-% 
-% % functions
-% rho = @(h) ch*(1-h*cz).^ce;
-% Vh0 = sqrt(rho(vel_info(1))*vel_info(2)^2/rho(h0));
-% Vz0 = sqrt(rho(vel_info(1))*vel_info(3)^2/rho(h0));
-% h = @(t) 1/cz*(ones(1,size(t,2)) - (cz*cf*Vz0*sqrt(rho(h0))/sqrt(ch)*t + (1-cz*h0)^cf*ones(1,size(t,2))).^(1/cf));
-% Vh = @(h) Vh0*sqrt(rho(h0)./rho(h));
-% 
-% % time gap
-% tf = sqrt(ch)/(cz*cf*Vz0*sqrt(rho(h0)))*(1-(1-cz*h0)^cf);
-% dt = tf/(N-1);
-% % time mesh
-% times = linspace(0, tf, N);
-% hs = h(times);
-% Vhs = Vh(hs);
-% disp(Vhs)
-
-tf = h0/(vel_info(3)+wind_dis(3));
+Vh = vel_info(2);
+Vz = vel_info(3);
+tf = h0/(Vz+wind_dis(3)); % wind error z
 dt = tf/(N-1);
 hs = linspace(h0, 0, N);
-Vhs = vel_info(2)*ones(1,N);
-% disp(Vhs)
 
 Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
       interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
-%% Combine wind err with wind profile
-id_p = floor(N*0.1);
+id_p = floor(N*0.2); % 20% steps
 hp = hs(id_p);
 ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
-Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios;
+Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios; % wind error xy
 
 %% Compute Safezone Constraints
 inds = zeros(size(Axbxh,1),1); % turn h to index
@@ -70,24 +47,19 @@ u = Prob.variable(1, N);
 if sum(guidance_guess,'all') == 0
     disp("WARNING! Solving guidance without initial guess!!")
 else
-%     try
-        x_guess = [x0; y0; psi_0]*ones(1,N);
-        u_guess = psi_dot_now*ones(1,N);
-        for i = 1:N-1
-            u_last = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
-            % u_guess should satisfy constraints!
-            u_guess(i+1) = max([min([u_last, psi_dot_m, u_guess(i)+psi_ddot_m*dt]), -psi_dot_m, u_guess(i)-psi_ddot_m*dt]);
-            % compute x_guess from forward Euler
-            x_guess(:,i+1) = x_guess(:,i) + dt*[(Vhs(i)*cos(x_guess(3,i))+Vhs(i+1)*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
-                                                (Vhs(i)*sin(x_guess(3,i))+Vhs(i+1)*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
-                                                u_guess(i)];
-        end
-        Prob.set_initial(x, x_guess);
-        Prob.set_initial(u, u_guess);
-%     catch
-%         disp("ERROR! Guidance guess should be interpolable!!")
-%         disp("WARNING! Solving guidance without initial guess!!")
-%     end
+    x_guess = [x0; y0; psi_0]*ones(1,N);
+    u_guess = psi_dot_now*ones(1,N);
+    for i = 1:N-1
+        u_last = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
+        % u_guess should satisfy constraints!
+        u_guess(i+1) = max([min([u_last, psi_dot_m, u_guess(i)+psi_ddot_m*dt]), -psi_dot_m, u_guess(i)-psi_ddot_m*dt]);
+        % compute x_guess from forward Euler
+        x_guess(:,i+1) = x_guess(:,i) + dt*[(Vh*cos(x_guess(3,i))+Vh*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
+                                            (Vh*sin(x_guess(3,i))+Vh*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
+                                            u_guess(i)];
+    end
+    Prob.set_initial(x, x_guess);
+    Prob.set_initial(u, u_guess);
 end
 
 % costs and constraints
@@ -100,15 +72,11 @@ Prob.subject_to(u(1) == psi_dot_now);
 
 for i = 1:N-1
     % x2~xN
-    Prob.subject_to(x(:,i+1) == x(:,i) + dt*[(Vhs(i)*cos(x(3,i))+Vhs(i+1)*cos(x(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
-                                             (Vhs(i)*sin(x(3,i))+Vhs(i+1)*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
+    Prob.subject_to(x(:,i+1) == x(:,i) + dt*[(Vh*cos(x(3,i))+Vh*cos(x(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
+                                             (Vh*sin(x(3,i))+Vh*sin(x(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
                                              u(i)]);
     % u2~uN
-
     cost = cost + u(i+1)^2*dt;
-%     cost = cost + (i/N)^2*u(i+1)^2*dt;
-%     cost = cost + lambda2*(i/N)^2*(1-cos(x(3,end)-psi_d));
-
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
     % u2-u1 ~ uN-uN-1
     Prob.subject_to(u(i+1)-u(i) <= dt*psi_ddot_m)
@@ -132,27 +100,19 @@ try
 
     xs = sol.value(x);
     us = sol.value(u);
-    guidance(1:2,1:N) = xs(1:2,1:N);
-    guidance(3,1:N) = hs(1:N);
-    guidance(4,1:N) = xs(3,1:N);
-    guidance(5,1:N) = us(1:N);
 
-    % for debugging / tuning
-    cost1 = lambda1*(xs(1,end)^2 + xs(2,end)^2);
-    cost2 = lambda2*(1-cos(xs(3,end)-psi_d));
-    cost3 = 0;
-    for i = 1:N-1
-    % u2~uN
-        cost3 = cost3 + us(i+1)^2*dt;
-    end
-    disp([cost1, cost2, cost3])
-    if cost1>400
+    pos_cost = lambda1*(xs(1,end)^2 + xs(2,end)^2);
+    if pos_cost>400
         flag = false;
-        disp("bad guidance!")
+        guidance = zeros(5, N);
+        disp("reject bad guidance!")
     else
         flag = true;
+        guidance(1:2,1:N) = xs(1:2,1:N);
+        guidance(3,1:N) = hs(1:N);
+        guidance(4,1:N) = xs(3,1:N);
+        guidance(5,1:N) = us(1:N);
     end
-%     flag = true;
 
 catch
     disp("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
