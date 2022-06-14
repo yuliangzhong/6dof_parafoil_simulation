@@ -1,4 +1,4 @@
-function [flag, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, delta_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
+function [flag, final_distance, control] = MPCC3d(N, Ts, vel_info, vel_info_mpcc, psi_dot_m, delta_dot_m, init_cond, init_dsda, guidance, heights, wind_profile_hat, wind_dis)
 
 tic
 
@@ -69,7 +69,7 @@ dpsi_f = @(x) um*x;
 
 %% MPC Formulation
 
-Q = diag([1000, 100, 10]);
+Q = diag([100, 100, 100]);
 q_eta = 50;
 
 Prob = casadi.Opti();
@@ -84,8 +84,8 @@ objective = 0;
 
 for i = 2:N
     gamma = atan2(-dfy(X(5,i)), -dfx(X(5,i))); % since eta is decreasing!
-    es_l = -cos(gamma)*(X(1,i) - fx(X(5,i))) - sin(gamma)*(X(2,i) - fy(X(5,i)));
     es_c = sin(gamma)*(X(1,i) - fx(X(5,i))) - cos(gamma)*(X(2,i) - fy(X(5,i)));
+    es_l = -cos(gamma)*(X(1,i) - fx(X(5,i))) - sin(gamma)*(X(2,i) - fy(X(5,i)));
     es_h = X(3,i) - X(5,i);
 
     objective = objective + [es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
@@ -132,19 +132,33 @@ Prob.solver('ipopt', struct('print_time', 0), struct('print_level', 0));
     control = [xs(3,1:N);
                us(1,1:N) - us(2,1:N)/2;
                us(1,1:N) + us(2,1:N)/2]; % [h, dl, dr]
+
+    gamma = atan2(-dfy(xs(5,end)), -dfx(xs(5,end))); % since eta is decreasing!
+    es_c = sin(gamma)*(xs(1,end) - fx(xs(5,end))) - cos(gamma)*(xs(2,end) - fy(xs(5,end)));
+    es_l = -cos(gamma)*(xs(1,end) - fx(xs(5,end))) - sin(gamma)*(xs(2,end) - fy(xs(5,end)));
+    es_h = xs(3,end) - xs(5,end);
+    final_distance = norm([es_c; es_l; es_h]);
     
     hold on
     grid on
-    scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 5, 'g')
+
+%     set(gca,'FontSize',25);
+%     scatter3(init_cond(2), init_cond(1), init_cond(3), 'r','filled')
+%     plot3(interp_guidance(2,id-1:id+N), interp_guidance(1,id-1:id+N), interp_heights(id-1:id+N), 'r')
+%     scatter3(fy(xs(5,:)), fx(xs(5,:)), xs(5,:), 'g', 'filled')
+%     scatter3(xs(2,2:end), xs(1,2:end), xs(3,2:end), 'b','filled')
+%     legend('initial position','reference','auxiliary states','MPCC planned trajectory')
+
+    scatter3(init_cond(2), init_cond(1), init_cond(3), 'r','filled')
     plot3(xs(2,:), xs(1,:), xs(3,:), 'b--','LineWidth',1)
-    scatter3(init_cond(2), init_cond(1), init_cond(3),'b', 'filled')
-    
+
     flag = true;
 
 % catch
 %     disp("WARNING! MPC Solution not found!")
 %     flag = false;
 %     control = zeros(3,N);
+%     final_cost = -99999;
 % end
 
 

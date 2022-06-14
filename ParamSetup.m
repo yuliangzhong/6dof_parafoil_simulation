@@ -18,17 +18,14 @@ heights = linspace(1e-6, height_lim, wind_pf_size); % start from 0+ avoiding NaN
 dh = height_lim/wind_pf_size;
 wind_profile_hat = GetWindProfile(heights);
 
-xi = 0.0* [randn();
-           randn();
-           0]; % wind profile error at 200[m]
-
 % compute delta_w for simulation
 delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
-b_w = 12 * 0.0251;
-ratios = [1, 1, 0.5];
+b_w_xy = 24 * 0.0251;
+b_w_z = 6 * 0.0251;
+ratios = [b_w_xy, b_w_xy, b_w_z];
 for i = 2:wind_pf_size
-    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*b_w*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
+    delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
 end
 % tune b_w s.t. norm(delta_ws) ~ wind_gust_max - vel_at6m
 
@@ -36,12 +33,10 @@ avg_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
 max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
 disp(num2str(max_disturbance_norm/(wind_gust_max-vel_at6m)*100) + "%");
 disp("======================================")
-% hold on
-% plot(heights, delta_ws(1,:));
-% plot(heights, delta_ws(2,:));
-% plot(heights, delta_ws(3,:));
 
-wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error storage
+ifPlotWindInfo = 1;
+
+wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
 
 % params from paper 14/16
 
@@ -98,7 +93,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 
 %% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
-init_pos_in_inertial_frame = [init_xy_pos; -33]; % x-North, z-down, y-East
+init_pos_in_inertial_frame = [init_xy_pos; -100]; % x-North, z-down, y-East
 init_rpy = [0; 0.006; -10/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
@@ -142,7 +137,7 @@ psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 %% MPCC Tracker
 time_horizon_N = 20; % < 50
 mpcc_freq = 1; % [Hz]
-mpcc_Ts = 0.25; % [s]
+mpcc_Ts = 0.5; % [s]
 mpcc_ctrl_freq = 10; % [Hz]
 control0 = zeros(3, time_horizon_N); % [h, psi, psi_dot]
 warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings in mpcc
@@ -157,3 +152,28 @@ warning('off','MATLAB:polyfit:RepeatedPointsOrRescale') % suppress fit warnings 
 % % delta_a: 1st order response
 % Ta = 1/(0.1293/0.2/0.191); % Ta = 1/(k/psi_dot_m), k: response slope
 
+%% Plot
+if ifPlotWindInfo
+    subplot(2,1,1)
+    hold on
+    plot(delta_ws(1,:), heights,'linewidth',1.5);
+    plot(delta_ws(2,:), heights,'linewidth',1.5);
+    plot(delta_ws(3,:), heights,'linewidth',1.5);
+    set(gca,'FontSize',25);
+    xlabel('wind gust [m/s]') 
+    ylabel('height [m]') 
+    legend('x-axis', 'y-axis', 'z-axis')
+    subplot(2,1,2)
+    hold on
+    plot(wind_profile_hat(1,:), heights,'linewidth',1.5);
+    plot(wind_profile_hat(2,:), heights,'linewidth',1.5);
+    plot(wind_profile_hat(3,:), heights,'linewidth',1.5);
+    wind_truth = delta_ws + wind_profile_hat;
+    plot(wind_truth(1,:), heights,'b','linewidth',1.5);
+    plot(wind_truth(2,:), heights,'r','linewidth',1.5);
+    plot(wind_truth(3,:), heights,'y','linewidth',1.5);
+    set(gca,'FontSize',25);
+    xlabel('wind profile [m/s]') 
+    ylabel('height [m]') 
+    legend('x-axis wind profile','y-axis wind profile','z-axis wind profile')
+end

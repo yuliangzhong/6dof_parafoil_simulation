@@ -34,6 +34,7 @@ init_xy_pos = PA+[5;5];
 
 % draw safezone constraints
 if if_plot
+    figure(2)
     hold on
     grid on
     xlim([-80,80])
@@ -50,8 +51,10 @@ if if_plot
               [points(1,i), points(1,i), points(1,i+1), points(1,i+1)], ...
               [h(i), 0, 0, h(i)], 'b','FaceAlpha', .3);
     end 
+    set(gca,'FontSize',20);
     xlabel('East --> y') 
     ylabel('North --> x') 
+    zlabel('Height --> z')
 end
 
 end
