@@ -88,7 +88,7 @@ for i = 2:N
     es_l = -cos(gamma)*(X(1,i) - fx(X(5,i))) - sin(gamma)*(X(2,i) - fy(X(5,i)));
     es_h = X(3,i) - X(5,i);
 
-    objective = objective + [es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
+    objective = objective + (1-(i-1)/N)*[es_c; es_l; es_h]'* Q * [es_c; es_l; es_h] ...
                           + q_eta * X(5,i);
 end
 Prob.minimize(objective)
