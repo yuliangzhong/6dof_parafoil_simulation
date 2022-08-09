@@ -94,7 +94,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 %% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
 init_pos_in_inertial_frame = [0;0; -100]; % x-North, z-down, y-East
-init_rpy = [0; 0.006; 155/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_rpy = [0; 0.006; -25/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
@@ -116,6 +116,8 @@ vel_accu = 0.1; % [m/s]
 row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
 
+yaw_avg_accu = 0.027; %[radius!!]
+
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
 % EKF_freq = sensor_freq; % [Hz]
@@ -136,7 +138,7 @@ EKF_freq = sensor_freq; % [Hz]
 state_mu0 = [init_pos_in_inertial_frame+[rand();rand();rand()];zeros(4,1)];
 state_sigma0 = blkdiag(5*eye(3), 3*eye(3), 1); % 7*7
 Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2); % 4*4
-R = pos_accu^2*eye(3); % 3*3
+R = blkdiag(pos_accu^2*eye(3), yaw_avg_accu); % 3*3
 
 %% Guidance
 psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
