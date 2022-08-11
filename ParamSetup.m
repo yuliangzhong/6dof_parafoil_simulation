@@ -116,28 +116,44 @@ vel_accu = 0.1; % [m/s]
 row_pitch_accu = 0.1; % [degree]
 yaw_accu = 0.5; % [degree]
 
-yaw_avg_accu = 0.027; %[radius!!]
+yaw_avg_accu = 0.6; %[radius!!]
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
-EKF_freq = sensor_freq; % [Hz]
-state_mu0 = [init_pos_in_inertial_frame; 
-             GroundSpeedCompute(init_rpy, init_uvw); 
-             init_rpy]; % 9*1
-% state_mu0 = [init_pos_in_inertial_frame;rand();rand();-abs(rand());rand();rand();rand()];
-% state_mu0 = [init_pos_in_inertial_frame;rand();rand();-abs(rand());0;0;rand()];
-% state_mu0 = [init_pos_in_inertial_frame;zeros(6,1)];
-state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
-Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
-R = pos_accu^2*eye(3); % 3*3
+% EKF_freq = sensor_freq; % [Hz]
+% state_mu0 = [init_pos_in_inertial_frame; 
+%              GroundSpeedCompute(init_rpy, init_uvw); 
+%              init_rpy]; % 9*1
+% % state_mu0 = [init_pos_in_inertial_frame;rand();rand();-abs(rand());rand();rand();rand()];
+% % state_mu0 = [init_pos_in_inertial_frame;rand();rand();-abs(rand());0;0;rand()];
+% % state_mu0 = [init_pos_in_inertial_frame;zeros(6,1)];
+% state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
+% Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
+% R = pos_accu^2*eye(3); % 3*3
 
 %% 4-dof Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, yaw] 7*1
 % EKF_freq = sensor_freq; % [Hz]
 % state_mu0 = [init_pos_in_inertial_frame+[rand();rand();rand()];zeros(4,1)];
-% state_sigma0 = blkdiag(5*eye(3), 3*eye(3), 1); % 7*7
+% state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4); % 7*7
 % Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2); % 4*4
 % R = blkdiag(pos_accu^2*eye(3), yaw_avg_accu); % 3*3
+
+%% 4-dof-simple Extended Kalman Filter for States
+% state X = [x, y, z, yaw] 4*1
+% EKF_freq = sensor_freq; % [Hz]
+% state_mu0 = [init_pos_in_inertial_frame;0];
+% state_sigma0 = blkdiag(4*eye(3),0.4); % 4*4
+% Q = (angVel_accu/180*pi)^2; % 1*1
+% R = blkdiag(pos_accu^2*eye(3), yaw_avg_accu); % 4*4
+
+%% 3-dof-simple Extended Kalman Filter for States
+% state X = [x, y, z] 4*1
+EKF_freq = sensor_freq; % [Hz]
+state_mu0 = init_pos_in_inertial_frame;
+state_sigma0 = 4*eye(3); % 4*4
+Q = yaw_avg_accu; % 1*1
+R = pos_accu^2*eye(3); % 3*3
 
 %% Guidance
 psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
