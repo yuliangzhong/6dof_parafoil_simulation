@@ -22,7 +22,7 @@ wind_profile_hat = GetWindProfile(heights);
 delta_ws = zeros(3,wind_pf_size);
 a_w = -0.00385;
 b_w_xy = 24 * 0.0251;
-b_w_z = 6 * 0.0251;
+b_w_z = 0 * 0.0251;
 ratios = [b_w_xy, b_w_xy, b_w_z];
 for i = 2:wind_pf_size
     delta_ws(:,i) = (1+dh*a_w)*delta_ws(:,i-1)+dh*[ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
@@ -94,7 +94,7 @@ cM = [c_lp; c_lda; c_m0; c_ma; c_mq; c_nr; c_nda]; % moment coefficients
 %% Safe Zone, Vel Info and Initiation
 [Axbxh, init_xy_pos] = SafeZoneCompute(0);
 init_pos_in_inertial_frame = [0;0; -150]; % x-North, z-down, y-East
-init_rpy = [0; 0.006; -150/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
+init_rpy = [0; 0.006; 30/180*pi]; % yaw-pitch-row; from ground to body frame; x-head, z-done, y-right
 init_uvw = [3.819; -0.673; 1.62]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
@@ -120,14 +120,41 @@ angVel_accu = 1; % [deg/s]
 
 %% Extended Kalman Filter for States
 % state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
-EKF_freq = sensor_freq; % [Hz]
+% EKF_freq = sensor_freq; % [Hz]
 % state_mu0 = [init_pos_in_inertial_frame; 
 %              GroundSpeedCompute(init_rpy, init_uvw); 
 %              init_rpy]; % 9*1
-state_mu0 = [init_pos_in_inertial_frame; zeros(6,1)]; % 9*1
-state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
-Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
-R = pos_accu^2*eye(3); % 3*3
+% state_mu0 = [init_pos_in_inertial_frame; zeros(6,1)]; % 9*1
+% state_sigma0 = blkdiag(4*eye(3), 5*eye(3), 10*eye(3)); % 9*9
+% Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
+% R = pos_accu^2*eye(3); % 3*3
+
+%% 4-dof-simple Extended Kalman Filter for States
+% state X = [x, y, z, yaw] 4*1
+% yaw_avg_accu = 0.5;
+% EKF_freq = sensor_freq; % [Hz]
+% state_mu0 = [init_pos_in_inertial_frame; 0];
+% state_sigma0 = blkdiag(4*eye(3),0.4); % 4*4
+% Q = (angVel_accu/180*pi)^2; % 1*1
+% R = blkdiag(pos_accu^2*eye(3), yaw_avg_accu^2); % 4*4
+
+%% 4-dof-simple-vel Extended Kalman Filter for States
+% state X = [x, y, z, yaw, Vh, Vz] 6*1
+% yaw_avg_accu = 0.5;
+% EKF_freq = sensor_freq; % [Hz]
+% state_mu0 = [init_pos_in_inertial_frame; 0; 4; 2];
+% state_sigma0 = blkdiag(4*eye(3),0.4, 0.5, 0.5); % 4*4
+% Q = (angVel_accu/180*pi)^2; % 1*1
+% R = blkdiag(pos_accu^2*eye(3), yaw_avg_accu^2); % 4*4
+
+%% 4-dof-simple-vel-dxdy Extended Kalman Filter for States
+% state X = [x, y, z, yaw, Vh, Vz] 6*1
+yaw_avg_accu = 0.5;
+EKF_freq = sensor_freq; % [Hz]
+state_mu0 = [init_pos_in_inertial_frame; 0; 4; 2];
+state_sigma0 = blkdiag(4*eye(3),0.4, 0.5, 0.5); % 4*4
+Q = (angVel_accu/180*pi)^2; % 1*1
+R = blkdiag(pos_accu^2*eye(3), 0.5,0.5); % 4*4
 
 % %% Guidance
 % psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
