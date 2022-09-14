@@ -19,7 +19,7 @@ init_pqr = [0; 0; 0]; % angular velocity in body frame
 %% Wind Profile and Wind Gust Dynamics
 % wind profile config
 vel_at6m = 2 * 0.5144; % wind velocity at 6m, absolute value, [knot]->[m/s]
-theta = 45; % [deg] constant
+theta = 60; % [deg] constant
 
 % wind profile info
 wind_pf_size = 300;
@@ -39,8 +39,8 @@ wind_profile_hat = GetWindProfile(heights);
 % tune b_w_xy/b_w_z to adjust norm of wind gusts
 delta_ws = zeros(3,wind_pf_size);
 k_w = -0.00385;
-b_w_xy = 12 * 0.0251;
-b_w_z = 6 * 0.0251;
+b_w_xy = 8 * 0.0251;
+b_w_z = 2 * 0.0251;
 ratios = [b_w_xy, b_w_xy, b_w_z];
 for i = 2:wind_pf_size
     zeta = [ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
