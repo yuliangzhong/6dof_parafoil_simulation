@@ -28,13 +28,18 @@ end
 subplot(1,2,1)
 hold on
 grid on
-plot(t_span, t_u)
-scatter(t_u_raw(:,1), t_u_raw(:,2))
+plot(t_span, t_u,'b', 'linewidth',1.5)
+scatter(t_u_raw(:,1), t_u_raw(:,2),'r','filled')
+title('Control Input')
+xlabel('time [s]')
+ylabel('asymmetric brake deflection \delta_a')
+legend('control input data','interpolated')
+set(gca,'FontSize',20);
 
 subplot(1,2,2)
 hold on
-plot(t_span, t_y,'r')
-scatter(t_y_raw(:,1), t_y_raw(:,2))
+scatter(t_y_raw(:,1), t_y_raw(:,2),'b','filled')
+plot(t_span, t_y,'r','linewidth',1.5)
 
 % pack data and estimate
 sys_id_data = iddata([zeros(10,1);t_y], [zeros(10,1);t_u], Ts);
@@ -50,5 +55,11 @@ a = pvec_step(2);
 deley = 0;
 
 sys = tf(b,[1, a, 0], 'InputDelay', deley)
-lsim(sys,t_u',t_span)
+y_fit = lsim(sys,t_u',t_span);
+plot(t_span, y_fit, 'g', 'linewidth',1.5)
+title('Heading Output')
+xlabel('time [s]')
+ylabel('system heading \chi [rad]')
+legend('heading output data','interpolated','response of estimated model')
 grid on
+set(gca,'FontSize',20);
