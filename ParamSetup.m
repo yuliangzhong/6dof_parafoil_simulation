@@ -33,26 +33,26 @@ GetWindProfile = @(h) [wind_h(h)*cos(theta_h);
 
 heights = linspace(1e-6, height_lim, wind_pf_size); % start from 0+ avoiding NaN
 dh = height_lim/wind_pf_size;
-wind_profile_hat = GetWindProfile(heights);
+wind_profile = GetWindProfile(heights);
 
 % compute the wind gust for simulation
 % tune b_w_xy/b_w_z to adjust norm of wind gusts
-delta_ws = zeros(3,wind_pf_size);
+wind_gust = zeros(3,wind_pf_size);
 k_w = -0.00385;
 b_w_xy = 8 * 0.0251;
 b_w_z = 2 * 0.0251;
 ratios = [b_w_xy, b_w_xy, b_w_z];
 for i = 2:wind_pf_size
     zeta = [ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
-    delta_ws(:,i) = (1+dh*k_w)*delta_ws(:,i-1)+dh*zeta;
+    wind_gust(:,i) = (1+dh*k_w)*wind_gust(:,i-1)+dh*zeta;
 end
 
-wind_gust_max = 6 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
-avg_disturbance_norm = mean(vecnorm(delta_ws(1:2,:)))
-max_disturbance_norm = max(vecnorm(delta_ws(1:2,:)))
-disp(num2str(max_disturbance_norm/wind_gust_max*100) + "%");
+wind_gust_max = 4 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
+avg_disturbance_norm = mean(vecnorm(wind_gust(1:2,:)));
+max_disturbance_norm = max(vecnorm(wind_gust(1:2,:)));
+disp("Maximum: "+num2str(max_disturbance_norm/wind_gust_max*100) + "%");
 disp("======================================")
-PlotWind(1, heights, wind_profile_hat, delta_ws);
+PlotWind(1, heights, wind_profile, wind_gust);
 
 % wind_error
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
