@@ -13,36 +13,37 @@ dl2 = test2.delta_l.signals.values;
 dr2 = test2.delta_r.signals.values;
 da2 = dr2 - dl2;
 
-% %% Fig 1
-% figure (1)
-% subplot(1,2,1)
-% hold on
-% plot(time1, da1,'r','linewidth',1.5);
-% set(gca,'FontSize',20)
-% xlabel('time [s]')
-% ylabel('asymmetric brake deflection \delta_{a}')
-% title('Control Inputs \delta_{a}')
-% legend('\delta_{a}')
-% grid on
-% 
-% subplot(1,2,2)
-% hold on
-% wind_gust = load('wind.mat', 'wind_gust').wind_gust;
-% heights = load('wind.mat', 'heights').heights;
-% wind_profile = load('wind.mat', 'wind_profile').wind_profile;
-% wind_truth = wind_gust + wind_profile;
-% plot(wind_truth(1,:), heights,'b','linewidth',1.5);
-% plot(wind_truth(2,:), heights,'r','linewidth',1.5);
-% plot(wind_truth(3,:), heights,'g','linewidth',1.5);
-% plot(wind_profile(1,:), heights,'b--','linewidth',1.5);
-% plot(wind_profile(2,:), heights,'r--','linewidth',1.5);
-% plot(wind_profile(3,:), heights,'g--','linewidth',1.5);
-% set(gca,'FontSize',20);
-% title('Wind Disturbance')
-% xlabel('wind [m/s]') 
-% ylabel('height [m]') 
-% legend('x-axis wind','y-axis wind','z-axis wind','x-axis wind profile','y-axis wind profile','z-axis wind profile')
-% grid on
+%% Fig 1
+
+figure (1)
+subplot(1,2,1)
+hold on
+plot(time1, da1,'r','linewidth',1.5);
+set(gca,'FontSize',20)
+xlabel('time [s]')
+ylabel('asymmetric brake deflection \delta_{a}')
+title('Control Inputs \delta_{a}')
+legend('\delta_{a}')
+grid on
+
+subplot(1,2,2)
+hold on
+wind_gust = load('wind.mat', 'wind_gust').wind_gust;
+heights = load('wind.mat', 'heights').heights;
+wind_profile = load('wind.mat', 'wind_profile').wind_profile;
+wind_truth = wind_gust + wind_profile;
+plot(wind_truth(1,:), heights,'b','linewidth',1.5);
+plot(wind_truth(2,:), heights,'r','linewidth',1.5);
+plot(wind_truth(3,:), heights,'g','linewidth',1.5);
+plot(wind_profile(1,:), heights,'b--','linewidth',1.5);
+plot(wind_profile(2,:), heights,'r--','linewidth',1.5);
+plot(wind_profile(3,:), heights,'g--','linewidth',1.5);
+set(gca,'FontSize',20);
+title('Wind Disturbance')
+xlabel('wind [m/s]') 
+ylabel('height [m]') 
+legend('x-axis wind','y-axis wind','z-axis wind','x-axis wind profile','y-axis wind profile','z-axis wind profile')
+grid on
 
 %% Fig 2
 

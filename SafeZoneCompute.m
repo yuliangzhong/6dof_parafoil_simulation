@@ -2,17 +2,13 @@
 % The format of safezone constraints are:
 % at height h, Ax * [x;y] <= bx --> [Ax, bx, h] =def= Axbxh
 
-function [Axbxh, init_xy_pos] = SafeZoneCompute(if_plot)
+function [Axbxh, init_xy_pos] = SafeZoneCompute(if_plot, origin_lat, origin_lon)
 
 % For now, assume the safe zone is a parallelogram ABCD(clockwize)
 % The origin is O. A is in the third quadrant
-% find a point in the map as the origin
-origin_lat = 47.35504; % degree
-origin_lon = 8.51982; % degree
-Origin = [origin_lat; origin_lon];
 
-PA = LatLon2xy(47.35422, 8.51943, Origin);
-PB = LatLon2xy(47.35544, 8.51869, Origin);
+PA = LatLon2xy(47.35422, 8.51943, origin_lat, origin_lon);
+PB = LatLon2xy(47.35544, 8.51869, origin_lat, origin_lon);
 PC = -PA;
 PD = -PB;
 
@@ -65,11 +61,11 @@ end
 
 end
 
-function P = LatLon2xy(lat, lon, origin)
+function P = LatLon2xy(lat, lon, origin_lat, origin_lon)
     % define the average radius of the earth
     R = 6371000; % m
     
     % calculate the position in meters
-    P = [(lat - origin(1)) / 180 * pi * R;
-         (lon - origin(2)) / 180 * pi * R * cos(origin(1) / 180 * pi)];
+    P = [(lat - origin_lat) / 180 * pi * R;
+         (lon - origin_lon) / 180 * pi * R * cos(origin_lat / 180 * pi)];
 end
