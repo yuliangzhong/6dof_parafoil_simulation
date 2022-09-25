@@ -124,24 +124,21 @@ vertical_pos_accu = 0.3; %[m]
 vel_accu = 0.1; % [m/s]
 
 % IMU
-imu_freq = 50; % [Hz] sensor data subscriber frequency
-pos_accu = 2; % [m]
-row_pitch_accu = 0.1; % [degree]
-yaw_accu = 0.5; % [degree]
+imu_freq = 10; % [Hz] sensor data subscriber frequency
 acc_accu = 0.1; % [m/s^2]
-angVel_accu = 0.1; % [deg/s]
-% should tune white noise power in simulator for accuracy of airspeed, AOA, and AOS
+gyro_accu = 0.1; % [deg/s]
 
-%% Extended Kalman Filter for States
-% state X = [x, y, z, x_dot, y_dot, z_dot, row, pitch, yaw] 9*1
-% EKF_freq = sensor_freq; % [Hz]
+%% Navigation: Extended Kalman Filter
+ekf_freq = min(gps_freq, imu_freq);
+
+% six DOF rigid body kinematics
+% state X = [x, y, z, vx, vy, vz, row, pitch, yaw] 9*1
 state_mu0 = [init_pos_in_inertial_frame; 
              GroundSpeedCompute(init_rpy, init_uvw); 
              init_rpy]; % 9*1
-state_sigma0 = blkdiag(4*eye(3), 2*eye(3), 0.4*eye(3)); % 9*9
-% Q = blkdiag(acc_accu^2*eye(3), (angVel_accu/180*pi)^2*eye(3)); % 6*6
-% R = blkdiag(pos_accu^2*eye(3), vel_accu^2*eye(3), ...
-%             diag([(row_pitch_accu/180*pi)^2, (row_pitch_accu/180*pi)^2, (yaw_accu/180*pi)^2])); % 9*9
+state_sigma0 = blkdiag(2*eye(3), 2*eye(3), 2*eye(3)); % 9*9
+Q = 4*blkdiag(acc_accu^2*eye(3), (gyro_accu/180*pi)^2*eye(3)); % 6*6
+R = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2]); % 3*3
 
 %% Guidance
 % psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
