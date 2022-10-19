@@ -34,7 +34,7 @@ GetWindProfile = @(h) [wind_h(h)*cos(theta_h);
                        zeros(1,size(h,2))]; % [wx; wy; 0];
 
 heights = linspace(1e-6, height_lim, wind_pf_size); % start from 0+ avoiding NaN
-dh = height_lim/wind_pf_size;
+dh = height_lim/(wind_pf_size-1);
 wind_profile = GetWindProfile(heights);
 
 % compute the wind gust for simulation
@@ -46,15 +46,10 @@ b_w_z = 2 * 0.0251;
 ratios = [b_w_xy, b_w_xy, b_w_z];
 for i = 2:wind_pf_size
     zeta = [ratios(1)*randn(); ratios(2)*randn(); ratios(3)*randn()];
-    wind_gust(:,i) = (1+dh*k_w)*wind_gust(:,i-1)+dh*zeta;
+    wind_gust(:,i) = (1+dh*k_w)*wind_gust(:,i-1)+dh*zeta; % forward Euler discretization
 end
-
-wind_gust_max = 4 * 0.5144; % maximum wind gust from wind forcast, [knot]->[m/s]
-avg_disturbance_norm = mean(vecnorm(wind_gust(1:2,:)));
-max_disturbance_norm = max(vecnorm(wind_gust(1:2,:)));
-disp("Maximum: "+num2str(max_disturbance_norm/wind_gust_max*100) + "%");
-disp("======================================")
-PlotWind(0, heights, wind_profile, wind_gust);
+% show gust info
+PlotWind(1, heights, wind_profile, wind_gust);
 
 % wind_error
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
@@ -135,10 +130,18 @@ ekf_freq = min(gps_freq, imu_freq);
 % state X = [x, y, z, vx, vy, vz, row, pitch, yaw] 9*1
 state_mu0 = [init_pos_in_inertial_frame; 
              GroundSpeedCompute(init_rpy, init_uvw); 
-             init_rpy]; % 9*1
+             0;0;0];
+%              init_rpy]; % 9*1
 state_sigma0 = blkdiag(2*eye(3), 2*eye(3), 2*eye(3)); % 9*9
 Q = 4*blkdiag(acc_accu^2*eye(3), (gyro_accu/180*pi)^2*eye(3)); % 6*6
 R = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2]); % 3*3
+
+% four DOF rigid body kinematics
+% state X = [x, y, z, chi, vh, vz] 6*1
+state_mu_4dof0 = [init_pos_in_inertial_frame; 0.0; 3.0;1.5]; % 6*1
+state_sigma_4dof0 = blkdiag(2*eye(3), 1, 0.5*eye(2)); % 6*6
+Q4 = 1;
+R4 = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2, 0.3]); % 4*4
 
 %% Guidance
 % psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
