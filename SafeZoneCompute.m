@@ -27,7 +27,7 @@ bx = [k1*PB(1)-PB(2);
 h = 15 * ones(4,1); % stay in safezone when height < 10 m
 Axbxh = [Ax, bx, h];
 
-init_xy_pos = [-20; 1];
+init_xy_pos = [-60; -20];
 
 % draw safezone constraints
 if if_plot

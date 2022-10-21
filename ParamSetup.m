@@ -49,7 +49,7 @@ for i = 2:wind_pf_size
     wind_gust(:,i) = (1+dh*k_w)*wind_gust(:,i-1)+dh*zeta; % forward Euler discretization
 end
 % show gust info
-PlotWind(1, heights, wind_profile, wind_gust);
+PlotWind(0, heights, wind_profile, wind_gust);
 
 % wind_error
 wind_err0 = zeros(4,50); % [h, dx, dy, dz] wind error = est_wind - wind_pf, stored in a queue
