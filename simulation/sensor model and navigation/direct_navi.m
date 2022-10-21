@@ -34,6 +34,7 @@ chi_dot = reshape(test.chi_dot.signals.values,2,[])';
 subplot(1,2,1)
 hold on
 grid on
+box on
 xlim([0,max(max(time1), max(time2))]);
 
 plot(time2, chi, 'r', 'LineWidth',1.5)
@@ -42,20 +43,20 @@ plot(time1, rpy(:,3),'k--','LineWidth',1.5)
 set(gca,'FontSize',20)
 xlabel('time [s]')
 ylabel('motion heading [rad]')
-title('Motion heading estimation from direct navigation')
-legend('estimation of motion heading \chi', 'ground truth','Location', 'best')
+title('Motion heading estimates from direct navigation')
+legend('motion heading estimates', 'ground truth','Location', 'best')
 
 subplot(1,2,2)
 hold on
 grid on
+box on
 xlim([0,max(max(time1), max(time2))]);
 
-plot(time2, chi_dot(:,1), 'b', 'LineWidth',1.5)
-plot(time2, chi_dot(:,2), 'r', 'LineWidth',1.5)
+plot(time2, chi_dot(:,1), 'r', 'LineWidth',1.5)
 plot(time1, rpy_dot(:,3),'k--','LineWidth',1.5)
 
 set(gca,'FontSize',20)
 xlabel('time [s]')
 ylabel('motion heading derivative [rad/s]')
-title('Motion heading derivative estimation from direct navigation')
-legend('direct difference', '3 backward difference', 'ground truth','Location', 'best')
+title('Motion heading derivative estimates from direct navigation')
+legend('motion heading derivative estimates', 'ground truth','Location', 'best')

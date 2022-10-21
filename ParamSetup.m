@@ -11,11 +11,11 @@ init_uvw = [2.81; 0.00; 1.23]; % velocity in body frame % shouldn't be all zero
 init_pqr = [0; 0; 0]; % angular velocity in body frame
 
 % % for guidance, corresponding height, Vh, Vz, without wind, delta_l,r = 0.5
-% vel_info = [95.551, 3.87807, 1.61823]; % [m, m/s, m/s]
+vel_info = [2.81, 1.23]; % [m/s, m/s]
 % % for control, [Vh0, Vh1, Vz0, Vz1], without wind when delta_s = 0,1
 % vel_info_mpcc = [4.82; 3.35; 1.515; 1.653]; % [m/s]
 % 
-% psi_dot_m = 0.1906; % maximum turning angular vel without wind [rad/s]
+psi_dot_m = 0.263; % maximum turning angular vel without wind [rad/s]
 % delta_dot_m = 0.5; % [/s]
 
 %% Wind Profile and Wind Gust Dynamics
@@ -128,26 +128,35 @@ ekf_freq = min(gps_freq, imu_freq);
 
 % six DOF rigid body kinematics
 % state X = [x, y, z, vx, vy, vz, row, pitch, yaw] 9*1
+% control input U = [a_acc, w_gyro] 6*1
+% dynamics disturbance D = [d_acc; d_gyro] 6*1
+% sensor observation Z = [gps, vx, vy]; 5*1
+% sensor error E = [e_gps, e_vxvy]; 5*1
 state_mu0 = [init_pos_in_inertial_frame; 
              GroundSpeedCompute(init_rpy, init_uvw); 
              0;0;0];
 %              init_rpy]; % 9*1
-state_sigma0 = blkdiag(2*eye(3), 2*eye(3), 2*eye(3)); % 9*9
-Q = 4*blkdiag(acc_accu^2*eye(3), (gyro_accu/180*pi)^2*eye(3)); % 6*6
-R = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2]); % 3*3
+state_sigma0 = blkdiag(2*eye(3), 2*eye(3), 0.5*eye(3)); % 9*9
+Q = 10*blkdiag(acc_accu^2*eye(3), (gyro_accu/180*pi)^2*eye(3)); % 6*6
+R = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2, vel_accu^2, vel_accu^2]); % 5*5
 
 % four DOF rigid body kinematics
-% state X = [x, y, z, chi, vh, vz] 6*1
-state_mu_4dof0 = [init_pos_in_inertial_frame; 0.0; 3.0;1.5]; % 6*1
+% state X = [x, y, z, psi, vha, vz]^T 6*1
+% control input U = psi_dot 1*1
+% dynamics disturbance D = dwz 1*1
+% sensor observation Z = [gps; psi] 4*1
+% sensor error E = [e_pos; e_psi] 4*1
+state_mu_4dof0 = [init_pos_in_inertial_frame; 0.0; 3.0; 1.5]; % 6*1
 state_sigma_4dof0 = blkdiag(2*eye(3), 1, 0.5*eye(2)); % 6*6
 Q4 = 1;
-R4 = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2, 0.3]); % 4*4
+R4 = diag([horizontal_pos_accu^2, horizontal_pos_accu^2, vertical_pos_accu^2, 0.3^2]); % 4*4
 
 %% Guidance
-% psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
+psi_d = theta/180*pi; % desired landing orientation: opposite to wind direction
 % 
 guidance_horizon_N = 100;
-guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame);
+% guidance0 = GuidanceGuess(guidance_horizon_N, init_pos_in_inertial_frame);
+guidance0 = zeros(5,guidance_horizon_N);
 % psi_ddot_m = psi_dot_m*2*delta_dot_m; % [rad/s2]
 
 %% MPCC Tracker

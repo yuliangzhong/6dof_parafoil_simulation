@@ -1,7 +1,7 @@
 % solving guidance by casadi + ipopt
 % with safety constraints
 
-function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, psi_ddot_m, init_cond, psi_dot_now, heights, wind_profile_hat, wind_dis, Axbxh, guidance_guess)
+function [flag, guidance] = GuidanceSolve(N, psi_d, vel_info, psi_dot_m, init_cond, heights, wind_profile_hat, Axbxh)
 
 tic
 
@@ -11,19 +11,19 @@ y0 = init_cond(2);
 h0 = init_cond(3);
 psi_0 = init_cond(4);
 
-Vh = vel_info(2);
-Vz = vel_info(3);
-tf = h0/(Vz+wind_dis(3)); % wind error z
+Vh = vel_info(1);
+Vz = vel_info(2);
+tf = h0/Vz;
 dt = tf/(N-1);
 hs = linspace(h0, 0, N);
 
 Ws = [interp1(heights, wind_profile_hat(1,:), hs, 'linear','extrap');
       interp1(heights, wind_profile_hat(2,:), hs, 'linear','extrap')];
 
-id_p = floor(N*0.2); % 20% steps
-hp = hs(id_p);
-ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
-Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios; % wind error xy
+% id_p = floor(N*0.2); % 20% steps
+% hp = hs(id_p);
+% ratios = exp(-5*(h0*ones(1,N)-hs)/(h0-hp));
+% Ws = Ws + [wind_dis(1); wind_dis(2)] .* ratios; % wind error xy
 
 %% Compute Safezone Constraints
 inds = zeros(size(Axbxh,1),1); % turn h to index
@@ -34,7 +34,7 @@ end
 %% Optimization Start
 
 lambda1 = 100;
-lambda2 = 100;
+lambda2 = 10;
 
 Au = [1; -1];
 bu = [psi_dot_m; psi_dot_m];
@@ -43,24 +43,24 @@ Prob = casadi.Opti();
 x = Prob.variable(3, N);
 u = Prob.variable(1, N);
 
-% set initial guess from guidance guess
-if sum(guidance_guess,'all') == 0
-    disp("WARNING! Solving guidance without initial guess!!")
-else
-    x_guess = [x0; y0; psi_0]*ones(1,N);
-    u_guess = psi_dot_now*ones(1,N);
-    for i = 1:N-1
-        u_last = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
-        % u_guess should satisfy constraints!
-        u_guess(i+1) = max([min([u_last, psi_dot_m, u_guess(i)+psi_ddot_m*dt]), -psi_dot_m, u_guess(i)-psi_ddot_m*dt]);
-        % compute x_guess from forward Euler
-        x_guess(:,i+1) = x_guess(:,i) + dt*[(Vh*cos(x_guess(3,i))+Vh*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
-                                            (Vh*sin(x_guess(3,i))+Vh*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
-                                            u_guess(i)];
-    end
-    Prob.set_initial(x, x_guess);
-    Prob.set_initial(u, u_guess);
-end
+% % set initial guess from guidance guess
+% if sum(guidance_guess,'all') == 0
+%     disp("WARNING! Solving guidance without initial guess!!")
+% else
+%     x_guess = [x0; y0; psi_0]*ones(1,N);
+%     u_guess = psi_dot_now*ones(1,N);
+%     for i = 1:N-1
+%         u_last = interp1(guidance_guess(3,:),guidance_guess(5,:),hs(i),'spline', 'extrap');
+%         % u_guess should satisfy constraints!
+%         u_guess(i+1) = max([min([u_last, psi_dot_m, u_guess(i)+psi_ddot_m*dt]), -psi_dot_m, u_guess(i)-psi_ddot_m*dt]);
+%         % compute x_guess from forward Euler
+%         x_guess(:,i+1) = x_guess(:,i) + dt*[(Vh*cos(x_guess(3,i))+Vh*cos(x_guess(3,i+1)))/2 + (Ws(1,i)+Ws(1,i+1))/2;
+%                                             (Vh*sin(x_guess(3,i))+Vh*sin(x_guess(3,i+1)))/2 + (Ws(2,i)+Ws(2,i+1))/2;
+%                                             u_guess(i)];
+%     end
+%     Prob.set_initial(x, x_guess);
+%     Prob.set_initial(u, u_guess);
+% end
 
 % costs and constraints
 cost = lambda1*(x(1,end)^2 + x(2,end)^2) + lambda2*(1-cos(x(3,end)-psi_d));
@@ -68,7 +68,7 @@ cost = lambda1*(x(1,end)^2 + x(2,end)^2) + lambda2*(1-cos(x(3,end)-psi_d));
 % x1
 Prob.subject_to(x(:,1) == [x0; y0; psi_0]);
 % u1
-Prob.subject_to(u(1) == psi_dot_now);
+Prob.subject_to(Au*u(1) <= bu);
 
 for i = 1:N-1
     % x2~xN
@@ -78,9 +78,9 @@ for i = 1:N-1
     % u2~uN
     cost = cost + u(i+1)^2*dt;
     Prob.subject_to(Au*u(i+1) <= bu); % control input constraints
-    % u2-u1 ~ uN-uN-1
-    Prob.subject_to(u(i+1)-u(i) <= dt*psi_ddot_m)
-    Prob.subject_to(u(i+1)-u(i) >= -dt*psi_ddot_m) % control input time derivitive constraints
+%     % u2-u1 ~ uN-uN-1
+%     Prob.subject_to(u(i+1)-u(i) <= dt*psi_ddot_m)
+%     Prob.subject_to(u(i+1)-u(i) >= -dt*psi_ddot_m) % control input time derivitive constraints
 end
 
 % constraints of safezone
